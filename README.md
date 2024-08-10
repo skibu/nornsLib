@@ -1,2 +1,73 @@
 # nornsLib
-Useful Lua libraries for Norns synth
+Useful Lua libraries for Norns synth to make it easier to create scripts that are user friendly. There are currently two separate library files. You only need to include what you want to actually use.
+
+## nornsLib/parameterExtensions.lua
+The parameterExtensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
+
+### Preventing overlap for parameter option
+This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
+
+### Easier navigation to the script's parameter page
+One of the great thing about a Norns is that the application scripts can have lots of parameters, allowing the user to finely control things. But the default method for getting to the parameters is quite clunky and dissuades users.
+
+The current method is a rather magical sequence of a short key1 press to get to Menus (but a long key press of greater than 0.25 won't work!), then turn encoder1 to get to PARAMETERS menu, then turn encoder2 to select Edit >, and then click on key3 to get to the script's param page, and then use encoder2 to actually get to a param. That is simply too convoluted.
+
+This library makes it so that the user can simply hit key1, with a long or short press, and they will be brought automatically to the script's parameter page and the first parameter will already be selected. And to get back the script page the user can simply hit key1 again with a long or short press. No more wondering why can navigate the menus due to hitting key1 just a bit longer than 0.25 sec!
+
+To enable this functionality the script needs to include `parameterExtensions` and call the library function jump_to_edit_params_screen() when the desired key sequence is hit. For example, for your script to have key1, long or short press, jump right to the parameters page one can do something like the following:
+```
+function key(n, down)
+  if n == 1 and down == 0 then
+    -- Key1 up so jump to edit params directly. Don't require it
+    -- to be a short press so that it is easier. And use key up
+    -- event because if used key down then the subsequent key1 up would 
+    -- switch back from edit params menu to the application screen.
+    jump_to_edit_params_screen()
+  end
+
+  ...
+end
+```
+
+## nornsLib/screenExtensions.lua
+The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
+
+All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
+
+These functions are:
+* screen.current_font_size()
+* screen.current_font_face()
+* screen.current_aa()
+
+There is also a function for determining the size of an image buffer. This is quite handy for if you want to do something like center a PNG image when usingi an image buffer. The function is:
+* screen.extents()
+and it returns the `width, height` of the image buffer.
+
+## Using in your script
+The library can easily be included in your script. Since the nornsLib is a separate repo from your script you need to make sure that the files are not just included, but that the whole nornsLib was cloned to the user's Norns. To make this simple you can just copy and paste the following include_norns_lib() function into your script. It does all the hard work. Once you have the include_norns_lib() function you can simply call `include_norns_lib("screenExtensions")` or `include_norns_lib("parameterExtensions")`
+
+The `include_norns_lib()` for you to copy:
+```
+-- For including libs from nornsLib repo. Similar to include(), but downloads 
+-- nornsLib if haven’t done so previously to the user's device.
+-- @tparam name - just the name of the particulae lib to include. Don't need
+-- directory nor the .lua suffix.
+function include_norns_lib(name)
+  -- Where to find the github github_repo
+  local github_repo_owner = "skibu"
+  local github_repo = "nornsLib"
+  local include_file = github_repo.."/"..name
+  
+  -- Try to include the lib
+  print("Including "..github_repo.." extension file "..include_file)
+  if not pcall(function () result = include(include_file) end) then
+    -- lib doesnt exist so do a git clone of the normsLib repo to get all the lib files
+    command = "git clone https://github.com/"..github_repo_owner.."/"..github_repo..".git ".._path.code..github_repo
+    print(github_repo.." not yet loaded so loading it now using: "..command)
+    os.execute(command)
+    
+    -- Now try including the lib again
+    return include(include_file)
+  end 
+end
+```
