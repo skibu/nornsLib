@@ -89,5 +89,5 @@ screen.clear = function()
   
   -- This line retrieves data using a queued command so will make sure that the
   -- original screen clear function has fully finished before this function returns.
-  screen.screen.current_point()
+  screen.current_point()
 end
