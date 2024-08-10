@@ -43,6 +43,9 @@ There is also a function for determining the size of an image buffer. This is qu
 * screen.extents()
 and it returns the `width, height` of the image buffer.
 
+And lastly, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
+* screen.clear() - fixes existing function
+
 ## Using in your script
 The library can easily be included in your script. Since the nornsLib is a separate repo from your script you need to make sure that the files are not just included, but that the whole nornsLib was cloned to the user's Norns. To make this simple you can just copy and paste the following include_norns_lib() function into your script. It does all the hard work. Once you have the include_norns_lib() function you can simply call `include_norns_lib("screenExtensions")` or `include_norns_lib("parameterExtensions")`
 
