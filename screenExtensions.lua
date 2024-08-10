@@ -48,7 +48,7 @@ screen.current_aa = function()
   return _current_aa
 end
 
------------------------- screen.extens() ----------------------------------
+------------------------ screen.extents() ----------------------------------
 
 -- Wacky useful function that returns extents of specified image buffer.
 -- This was quite difficult to figure out because had to search
@@ -72,3 +72,22 @@ screen.extents = function(image_buffer)
   -- Now can just call the extents function on the image buffer and return the results
   return extents_function(image_buffer)
 end  
+
+--------------------------- screen.clear() -------------------------------
+
+-- In the 240424 there is a bug when writing an image buffer after screen.clear() is 
+-- called. The screen.display_image() call is not queued and therefore can execute
+-- before the screen is fully cleared, resulting in the image not be displayed correctly
+-- or even at all. This is being fixed in the next release of Norns, but if you are 
+-- using screen.display_image() then you will want to include this library since it
+-- is a good temporary fix for the problem.
+
+local _original_clear_function = screen.clear
+
+screen.clear = function()
+  _original_clear_function()
+  
+  -- This line retrieves data using a queued command so will make sure that the
+  -- original screen clear function has fully finished before this function returns.
+  screen.screen.current_point()
+end
