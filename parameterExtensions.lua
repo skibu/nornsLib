@@ -9,6 +9,10 @@
 -- Need screen extensions to get current font values when redrawing
 include "nornsLib/screenExtensions"
 
+----------------------------------------------------------------------------------
+------------------------- Make sure selector text doesn't overlap ----------------
+----------------------------------------------------------------------------------
+
 -- The menu that contains the params. This is the one that needs to be modified
 local params_menu = require "core/menu/params"
 
@@ -87,4 +91,117 @@ function output_value_without_overlap(value_str, label_str)
   if screen.current_font_size() ~= orig_font_size then screen.font_size(orig_font_size) end
   if screen.current_font_face() ~= orig_font_face then screen.font_face(orig_font_face) end
   if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
+end
+
+----------------------------------------------------------------------------------
+---------- Hnadle key1 better and be able to jump straight to params page --------
+----------------------------------------------------------------------------------
+
+-- Override _norns.key function. This modified function handles all button presses 
+-- both for the script and for the menus. It is how short presses on key1 are 
+-- detected and handled. But it is modified here so that a key1 short press is
+-- still sent to the script. This way the script can do something special, like
+-- jump directly to the PARAMS menu whether it is a short press or a long press.
+
+-- In the original _norns.key function in lua/core/menu.lua the global variables
+-- pending and t are local and therefore cannot be accessed. But pending is only
+-- used within _norns.key() and in the timer event function. Therefore can just
+-- declare a new pending variable here. And the t timer is easy to access from
+-- core/metro.
+local pending = false
+local metro = require 'core/metro'
+local t = metro[31]
+
+t.event = function(_)
+  _menu.key(1,1)
+  pending = false
+  if _menu.mode == true then _menu.redraw() end
+end
+
+_norns.key = function(n, z)
+  -- key 1 detect for short press
+  if n == 1 then
+    if z == 1 then
+      -- key 1 pressed so start timer
+      _menu.alt = true
+      pending = true
+      t:start()
+    elseif pending == true then
+      -- Key 1 released within the timer's allowed time so was short press.
+      _menu.alt = false
+
+      -- Toggle menu mode. If was in menu mode will go to app script mode,
+      -- and visa versa.
+      if _menu.mode == true and _menu.locked == false then
+        -- Go to application mode
+        _menu.set_mode(false)
+      else
+        -- Tell app script that button 1 was released, even though was a short press
+        _menu.key(n,z) -- always 1,0
+
+        -- Go to menu mode
+        _menu.set_mode(true)
+      end
+
+      -- Done with short press timer so clear it
+      t:stop()
+      pending = false
+    else
+      -- key 1 released but not within allowed short time so pass event to script
+      _menu.alt = false
+      if _menu.mode == true and _menu.locked == false then
+        -- In menu mode. Should treat long k1 press same as short press and get out
+        -- of menu mode. This avoids user getting confused with hitting k1 and it
+        -- not working because it was down a bit too long.
+        _menu.set_mode(false)
+      else
+        -- Not in menu mode so simply pass through the k1 up info to the script app
+        _menu.key(n,z) -- always 1,0
+      end
+    end
+  else
+    -- key 2 or 3 so pass through to menu key handler
+    _menu.key(n,z)
+  end
+
+  -- Restart screen saver timer
+  screen.ping()
+end
+
+-- Jumps from the application screen to the script's Params Edit screen so that user can 
+-- easily change app params. For when k1 pressed from within the script. Really nice
+-- feature since it makes param changes easier. This function should be called in the
+-- script's key() method for key1 is released. 
+function jump_to_edit_params_screen()
+  -- Change to menu mode 
+  _menu.set_mode(true) 
+
+  -- Get access to the PARAMS menu class
+  local params_class = require "core/menu/params"
+
+  -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
+  -- screen, like PSET. mEdit is a local in lua/core/menu/params.lua so needs to
+  -- be duplicated here.
+  local mEDIT = 1
+  params_class.mode = mEDIT
+
+  -- tSEPARATOR and tTEXT are locals in paramset.lua so get them from metatable
+  local params_metatable = getmetatable(params)
+  local tSEPARATOR = params_metatable.tSEPARATOR
+  local tTEXT = params_metatable.tTEXT
+  
+  -- Set to first settable item
+  params_class.pos = 0 -- For if don't find appropriate one
+  for idx=1,#params.params do
+    if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
+      params_class.pos = idx - 1 -- oddly the index for parameters is zero based
+      break
+    end
+  end
+  
+  -- Change to PARAMS menu screen
+  _menu.set_page("PARAMS")
+
+  -- Initialize the params page in case haven't done so previously
+  params_class.init()
 end
