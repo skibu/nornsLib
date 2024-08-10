@@ -118,6 +118,7 @@ t.event = function(_)
   if _menu.mode == true then _menu.redraw() end
 end
 
+-- Overriding the key() function in lua/core/menu.lua
 _norns.key = function(n, z)
   -- key 1 detect for short press
   if n == 1 then
