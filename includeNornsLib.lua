@@ -1,4 +1,3 @@
--- TEST
 -- For including libs from nornsLib repo. Similar to include(), but downloads 
 -- nornsLib if haven’t done so previously to the user's device. And if NornsLib
 -- already downloaded then this will automatically load updates via git checkout.
