@@ -63,7 +63,8 @@ function include_norns_lib(name)
 
   -- Update or download the library
   if util.file_exists(_path.code..github_repo) then
-    -- Norns lib already exists so just update it 
+    -- Norns lib already exists so just update it.
+    -- NOTE: user made changes to the lib will be lost!
     local command = "git -C ".._path.code..github_repo.." checkout ."
     print("Updating NornsLib using command:\n"..command)
     os.execute(command)
