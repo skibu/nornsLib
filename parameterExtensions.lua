@@ -6,6 +6,11 @@
 --     so that they don't have to go through complicated key and encoder sequence
 --     to get there.
 
+-- Make sure this file only loaded once. This prevents infinite recursion when 
+-- overriding system functions.
+if parameter_extensions_loaded ~= nil then return end
+parameter_extensions_loaded = true
+
 -- Need screen extensions to get current font values when redrawing
 include "nornsLib/screenExtensions"
 
@@ -112,11 +117,13 @@ local pending = false
 local metro = require 'core/metro'
 local t = metro[31]
 
+
 t.event = function(_)
   _menu.key(1,1)
   pending = false
   if _menu.mode == true then _menu.redraw() end
 end
+
 
 -- Overriding the key() function in lua/core/menu.lua
 _norns.key = function(n, z)
@@ -168,6 +175,7 @@ _norns.key = function(n, z)
   -- Restart screen saver timer
   screen.ping()
 end
+
 
 -- Jumps from the application screen to the script's Params Edit screen so that user can 
 -- easily change app params. For when k1 pressed from within the script. Really nice

@@ -1,5 +1,10 @@
 -- Extension to augment the Norns Screen functions
 
+-- Make sure this file only loaded once. This prevents infinite recursion when 
+-- overriding system functions.
+if screen_extensions_loaded ~= nil then return end
+screen_extensions_loaded = true
+
 ------------------------ screen.current_font_size() -------------------
 
 -- Modify font_size() so that it stores the font size
