@@ -10,6 +10,7 @@
 -- overriding system functions.
 if parameter_extensions_loaded ~= nil then return end
 parameter_extensions_loaded = true
+print("====================== loading in parameterExtensions.lua")
 
 -- Need screen extensions to get current font values when redrawing
 include "nornsLib/screenExtensions"
