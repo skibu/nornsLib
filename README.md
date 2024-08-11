@@ -49,28 +49,35 @@ And lastly, screen.clear() is overriden to deal with a bug when writing an image
 ## Using in your script
 The library can easily be included in your script. Since the nornsLib is a separate repo from your script you need to make sure that the files are not just included, but that the whole nornsLib was cloned to the user's Norns. To make this simple you can just copy and paste the following include_norns_lib() function into your script. It does all the hard work. Once you have the include_norns_lib() function you can simply call `include_norns_lib("screenExtensions")` or `include_norns_lib("parameterExtensions")`
 
-The `include_norns_lib()` for you to copy:
+The `include_norns_lib()` you can copy and paste into your code (also available at nornsLib/includeNornsLib.lua:
 ```
 -- For including libs from nornsLib repo. Similar to include(), but downloads 
--- nornsLib if haven’t done so previously to the user's device.
+-- nornsLib if haven’t done so previously to the user's device. And if NornsLib
+-- already downloaded then this will automatically load updates via git checkout.
 -- @tparam name - just the name of the particulae lib to include. Don't need
 -- directory nor the .lua suffix.
 function include_norns_lib(name)
   -- Where to find the github github_repo
   local github_repo_owner = "skibu"
   local github_repo = "nornsLib"
-  local include_file = github_repo.."/"..name
-  
-  -- Try to include the lib
-  print("Including "..github_repo.." extension file "..include_file)
-  if not pcall(function () result = include(include_file) end) then
-    -- lib doesnt exist so do a git clone of the normsLib repo to get all the lib files
-    command = "git clone https://github.com/"..github_repo_owner.."/"..github_repo..".git ".._path.code..github_repo
-    print(github_repo.." not yet loaded so loading it now using: "..command)
+
+  -- Update or download the library
+  if util.file_exists(_path.code..github_repo) then
+    -- Norns lib already exists so just update it 
+    local command = "git -C ".._path.code..github_repo.." checkout ."
+    print("Updating NornsLib using command:\n"..command)
     os.execute(command)
-    
-    -- Now try including the lib again
-    return include(include_file)
-  end 
+  else
+    -- Norns lib hasn't yet been downloaded so clone it
+    local command = "git clone https://github.com/"..github_repo_owner.."/"..github_repo..".git ".._path.code..github_repo
+    print("Downloading NornsLib using command:\n"..command)
+    os.execute(command)
+  end
+  
+  -- Now try including the lib again
+  return include(github_repo.."/"..name)
 end
+
+-- Then can include lib files vie something like:
+include_norns_lib("parameterExtensions")
 ```
