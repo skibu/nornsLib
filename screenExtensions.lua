@@ -1,9 +1,19 @@
 -- Extension to augment the Norns Screen functions
 
 -- Make sure this file only loaded once. This prevents infinite recursion when 
--- overriding system functions.
-if screen_extensions_loaded ~= nil then return end
-screen_extensions_loaded = true
+-- overriding system functions. Bit complicated because need to use something
+-- that lasts across script restarts. The solution is to use add a boolean to
+-- the object whose function is getting overloaded.
+
+-- If the special variable already set then return and don't process this file further
+if screen["already_included"] ~= nil then 
+  print("screenExtensions.lua already included so not doing so again")
+  return 
+end
+  
+-- Need to process this file
+screen["already_included"] = true
+print("screenExtensions.lua not yet loaded so loading now...")
 
 ------------------------ screen.current_font_size() -------------------
 

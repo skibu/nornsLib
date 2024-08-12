@@ -6,63 +6,56 @@
 --     so that they don't have to go through complicated key and encoder sequence
 --     to get there.
 
--- Make sure this file only loaded once. This prevents infinite recursion when 
--- overriding system functions.
-if parameter_extensions_loaded ~= nil then return end
-parameter_extensions_loaded = true
-print("====================== loading in parameterExtensions.lua")
+------------------------------------------------------------------------------------------
 
--- Need screen extensions to get current font values when redrawing
-include "nornsLib/screenExtensions"
+-- This two functions need to be loaded everytime since it is a global function. Therefore
+-- it is defined before the code that returns from this script if was read in before.
 
-----------------------------------------------------------------------------------
-------------------------- Make sure selector text doesn't overlap ----------------
-----------------------------------------------------------------------------------
+-- Jumps from the application screen to the script's Params Edit screen so that user can 
+-- easily change app params. For when k1 pressed from within the script. Really nice
+-- feature since it makes param changes easier. This function should be called in the
+-- script's key() method for key1 is released. 
+function jump_to_edit_params_screen()
+  -- Change to menu mode 
+  _menu.set_mode(true) 
 
--- The menu that contains the params. This is the one that needs to be modified
-local params_menu = require "core/menu/params"
+  -- Get access to the PARAMS menu class
+  local params_class = require "core/menu/params"
 
--- For keeping track of current font values so that they can be restored after drawing
-local original_text_right_func
-local original_redraw_function = params_menu.redraw
-local possible_label
+  -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
+  -- screen, like PSET. mEdit is a local in lua/core/menu/params.lua so needs to
+  -- be duplicated here.
+  local mEDIT = 1
+  params_class.mode = mEDIT
 
--- The new redraw() function. Temporarily witches to using special screen.text() 
--- and screen.text_right() functions that allow output_value_without_overlap() to
--- be called instead of screen.text_right. This way can make sure that the option
--- label and values don't overlap. 
-params_menu.redraw = function()
-  -- Switch to using special screen.text() and screen.text_right() functions
-  local original_text_func = screen.text
-  screen.text = function(str)
-    possible_label = str
-    original_text_func(str)
-  end
+  -- tSEPARATOR and tTEXT are locals in paramset.lua so get them from metatable
+  local params_metatable = getmetatable(params)
+  local tSEPARATOR = params_metatable.tSEPARATOR
+  local tTEXT = params_metatable.tTEXT
   
-  original_text_right_func = screen.text_right
-  screen.text_right = function(value) 
-    -- If the value and label are short such that there could not be overlap 
-    -- then just use original simple text_right() function 
-    if string.len(value) + string.len(possible_label) < 24 then
-      original_text_right_func(value)
-    else
-      -- Longish labels so make sure they don't overlap
-      output_value_without_overlap(value, possible_label)
+  -- Set to first settable item
+  params_class.pos = 0 -- For if don't find appropriate one
+  for idx=1,#params.params do
+    if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
+      params_class.pos = idx - 1 -- oddly the index for parameters is zero based
+      break
     end
   end
-
-  -- Call the original redraw function
-  original_redraw_function()
   
-  -- Restore the screen.text() and screen.text_right() functions
-  screen.text = original_text_func
-  screen.text_right = original_text_right_func
+  -- Change to PARAMS menu screen
+  _menu.set_page("PARAMS")
+
+  -- Initialize the params page in case haven't done so previously
+  params_class.init()
 end
 
 
 -- Display current selector value for param param_idx. 
 -- For norns/lua/core/menu/params.lua
-function output_value_without_overlap(value_str, label_str)
+function output_value_without_overlap(value_str, label_str, original_text_right_func)
+  -- If value is nil don't try to process it
+  if value_str == nil then return end
+  
   local label_width = screen.text_extents(label_str)
   local value_width = screen.text_extents(value_str)
   local orig_font_size = screen.current_font_size()
@@ -98,6 +91,76 @@ function output_value_without_overlap(value_str, label_str)
   if screen.current_font_face() ~= orig_font_face then screen.font_face(orig_font_face) end
   if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
 end
+
+---------------------------------------------------------------------------------------------
+
+-- Make sure this file only loaded once. This prevents infinite recursion when 
+-- overriding system functions. Bit complicated because need to use something
+-- that lasts across script restarts. The solution is to use add a boolean to
+-- the object whose function is getting overloaded.
+
+-- The menu that contains the params. This is the one that needs to have function
+-- ptrs modified. So this is where should store the already_included boolean.
+local params_menu = require "core/menu/params"
+
+-- If the special variable already set then return and don't process this file further
+if params_menu["already_included"] ~= nil then 
+  print("parameterExtensions.lua already included so not doing so again")
+  return 
+end
+  
+-- Need to process this file
+params_menu["already_included"] = true
+print("parameterExtensions.lua not yet loaded so loading now...")
+
+----------------------------------------------------------------------------------
+------------------------- Make sure selector text doesn't overlap ----------------
+----------------------------------------------------------------------------------
+
+-- Need screen extensions to get current font values when redrawing
+include "nornsLib/screenExtensions"
+
+-- For keeping track of original redraw() so that it can be used within the modified code
+local original_redraw_function = params_menu.redraw
+local possible_label
+
+-- The new redraw() function. Temporarily witches to using special screen.text() 
+-- and screen.text_right() functions that allow output_value_without_overlap() to
+-- be called instead of screen.text_right. This way can make sure that the option
+-- label and values don't overlap. 
+params_menu.redraw = function()
+  -- Switch to using special screen.text() function that stores the last text
+  -- written using screen.text(str)
+  local original_text_func = screen.text
+  screen.text = function(str)
+    possible_label = str
+    original_text_func(str)
+  end
+  
+  -- Switch to using special screen.text_right() function that if text too wide
+  -- it draws it smaller so that it won't overlap with the label text written to
+  -- the left.
+  local original_text_right_func = screen.text_right
+  screen.text_right = function(value) 
+    -- If the value and label are short such that there could not be overlap 
+    -- then just use original simple text_right() function 
+    if value ~= nill and possible_label ~= nil and 
+        string.len(value) + string.len(possible_label) < 24 then
+      original_text_right_func(value)
+    else
+      -- Longish labels so make sure they don't overlap
+      output_value_without_overlap(value, possible_label, original_text_right_func)
+    end
+  end
+
+  -- Call the original redraw function
+  original_redraw_function()
+  
+  -- Restore the screen.text() and screen.text_right() functions
+  screen.text = original_text_func
+  screen.text_right = original_text_right_func
+end
+
 
 ----------------------------------------------------------------------------------
 ---------- Hnadle key1 better and be able to jump straight to params page --------
@@ -178,40 +241,3 @@ _norns.key = function(n, z)
 end
 
 
--- Jumps from the application screen to the script's Params Edit screen so that user can 
--- easily change app params. For when k1 pressed from within the script. Really nice
--- feature since it makes param changes easier. This function should be called in the
--- script's key() method for key1 is released. 
-function jump_to_edit_params_screen()
-  -- Change to menu mode 
-  _menu.set_mode(true) 
-
-  -- Get access to the PARAMS menu class
-  local params_class = require "core/menu/params"
-
-  -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
-  -- screen, like PSET. mEdit is a local in lua/core/menu/params.lua so needs to
-  -- be duplicated here.
-  local mEDIT = 1
-  params_class.mode = mEDIT
-
-  -- tSEPARATOR and tTEXT are locals in paramset.lua so get them from metatable
-  local params_metatable = getmetatable(params)
-  local tSEPARATOR = params_metatable.tSEPARATOR
-  local tTEXT = params_metatable.tTEXT
-  
-  -- Set to first settable item
-  params_class.pos = 0 -- For if don't find appropriate one
-  for idx=1,#params.params do
-    if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
-      params_class.pos = idx - 1 -- oddly the index for parameters is zero based
-      break
-    end
-  end
-  
-  -- Change to PARAMS menu screen
-  _menu.set_page("PARAMS")
-
-  -- Initialize the params page in case haven't done so previously
-  params_class.init()
-end
