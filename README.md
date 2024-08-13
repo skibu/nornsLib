@@ -66,3 +66,25 @@ function download_nornsLib()
   end
 end
 ```
+### Full example:
+```
+-- The function
+function download_nornsLib()
+  if not util.file_exists(_path.code.."nornsLib") then
+    os.execute("git clone https://github.com/skibu/nornsLib.git ".._path.code.."nornsLib")
+  end
+end
+
+-- Download the nornsLib if haven't already done so
+download_nornsLib()
+
+-- Optionally, make sure nornsLib has the latest greatest version from GitHub
+include("nornsLib/updateLib")
+update_nornsLib()
+
+-- Include whichever extension scripts are needed, or simply all of them 
+include("nornsLib/includeAllExt")
+
+-- Do some fun stuff, such as print the whole params table
+json.print(params)
+```
