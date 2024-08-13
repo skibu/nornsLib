@@ -1,8 +1,17 @@
 # nornsLib
 Useful Lua libraries for Norns synth to make it easier to create scripts that are user friendly. There are currently two separate library files. You only need to include what you want to actually use.
 
-## nornsLib/parameterExtensions.lua
-The parameterExtensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
+## nornsLib/jsonExt.lua
+Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format.
+
+### json.encode(tbl)
+
+### tbl = json.decode(json_str)
+
+### json.print(tbl)
+
+## nornsLib/parameterExt.lua
+The parameter extensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
 
 ### Preventing overlap for parameter option
 This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
@@ -29,7 +38,7 @@ function key(n, down)
 end
 ```
 
-## nornsLib/screenExtensions.lua
+## nornsLib/screenExt.lua
 The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
 
 All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
@@ -47,42 +56,13 @@ And lastly, screen.clear() is overriden to deal with a bug when writing an image
 * screen.clear() - fixes existing function
 
 ## Using in your script
-The library can easily be included in your script. Since the nornsLib is a separate repo from your script you need to make sure that the files are not just included, but that the whole nornsLib was cloned to the user's Norns. To make this simple you can just copy and paste the following include_norns_lib() function into your script. It does all the hard work. Once you have the include_norns_lib() function you can simply call `include_norns_lib("screenExtensions")` or `include_norns_lib("parameterExtensions")`
+The library can easily be included in your script. Since the nornsLib is a separate repo from your script you need to make sure that the files are not just included, but that the whole nornsLib was cloned to the user's Norns. To make this simple you can just copy and paste the following include_norns_lib() function into your script. It does all the hard work. Once you have the include_norns_lib() function you can simply call `include("nornsLib/screenExt")` or `include("parameterExt")`
 
-The `include_norns_lib()` you can copy and paste into your code (also available at nornsLib/includeNornsLib.lua:
+The `download_nornsLib()` you can copy and paste into your code (also available at [nornsLib/includeNornsLibExample.lua](https://raw.githubusercontent.com/skibu/nornsLib/main/includeNornsLibExample.lua):
 ```
--- For including libs from nornsLib repo. Similar to include(), but downloads 
--- nornsLib if haven’t done so previously to the user's device. And if NornsLib
--- already downloaded then this will automatically load updates via git checkout.
--- @tparam name - just the name of the particulae lib to include. Don't need
--- directory nor the .lua suffix.
-function include_norns_lib(name)
-  -- Where to find the github github_repo
-  local github_repo_owner = "skibu"
-  local github_repo = "nornsLib"
-
-  -- Update or download the library
-  if util.file_exists(_path.code..github_repo) then
-    -- Norns lib already exists so just update it. Need to do a "checkout ."
-    -- to get missing files and a "pull" to get modifications.
-    -- NOTE: user made changes to the lib will be lost!
-    local checkout_command = "git -C ".._path.code..github_repo.." checkout ."
-    local pull_command = "git -C ".._path.code..github_repo.." pull --ff-only"
-    print("Updating NornsLib using command:\n"..checkout_command.."\nand\n"..pull_command)
-    os.execute(checkout_command)
-    os.execute(pull_command)
-  else
-    -- Norns lib hasn't yet been downloaded so clone it
-    local command = "git clone https://github.com/"..github_repo_owner.."/"..github_repo..".git "..
-      _path.code..github_repo
-    print("Downloading NornsLib using command:\n"..command)
-    os.execute(command)
+function download_nornsLib()
+  if not util.file_exists(_path.code.."nornsLib") then
+    os.execute("git clone https://github.com/skibu/nornsLib.git ".._path.code.."nornsLib")
   end
-  
-  -- Now try including the lib again
-  return include(github_repo.."/"..name)
 end
-
--- Then can include lib files vie something like:
-include_norns_lib("parameterExtensions")
 ```
