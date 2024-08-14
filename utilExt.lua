@@ -41,3 +41,59 @@ function util.tprint(obj)
   local truncated_time_str = string.sub(time_str, decimal_loc-4, decimal_loc+6)
   print(truncated_time_str .. " - " .. tostring(obj))
 end
+
+
+-- For finding the directory of a file. Useful for creating file in a directory that
+-- doesn't already exist
+function util.get_dir(full_filename)
+    local last_slash = (full_filename:reverse()):find("/")
+    return (full_filename:sub(1, -last_slash))
+end
+
+
+-- If dir doesn't already exist, creates directory for a file that is about
+-- to be written. Different from util.make_dir() in that make_dir_for_file() 
+-- can take in file name and determine the directory from it. 
+function util.make_dir_for_file(full_filename)
+  -- Determine directory that needs to exist
+  local dir = util.get_dir(full_filename)
+
+  -- If directory already exists then don't need to create it
+  if util.file_exists(dir) then return end
+
+  -- Directory didn't exist so create it
+  os.execute("mkdir "..dir)
+end
+
+
+-- From https://gist.github.com/liukun/f9ce7d6d14fa45fe9b924a3eed5c3d99
+local function char_to_hex(c)
+  return string.format("%%%02X", string.byte(c))
+end
+
+local function hex_to_char(x)
+  return string.char(tonumber(x, 16))
+end
+
+
+-- For encoding a url that has special characters.
+function util.urlencode(url)
+  if url == nil then
+    return
+  end
+  url = url:gsub("\n", "\r\n")
+  url = url:gsub("([^%w ])", char_to_hex)
+  url = url:gsub(" ", "+")
+  return url
+end
+
+
+-- For decoding a url with special characters
+function util.urldecode(url)
+  if url == nil then
+    return
+  end
+  url = url:gsub("+", " ")
+  url = url:gsub("%%(%x%x)", hex_to_char)
+  return url
+end
