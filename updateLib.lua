@@ -27,7 +27,7 @@ function update_lib(github_repo_owner, github_repo)
     -- Library already exists, so just update it. Need to do a "checkout ."
     -- to get missing files and a "pull" to get modifications.
     local checkout_command = "git -C ".._path.code..github_repo.." checkout ."
-    local pull_command = "git -C ".._path.code..github_repo.." pull"
+    local pull_command = "git -C ".._path.code..github_repo.." pull --ff-only"
     print("Updating "..github_repo.." using command:\n"..checkout_command..
       "\nand\n"..pull_command)
     os.execute(checkout_command)
