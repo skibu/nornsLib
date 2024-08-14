@@ -118,7 +118,7 @@ print("parameterExtensions.lua not yet loaded so loading now...")
 ----------------------------------------------------------------------------------
 
 -- Need screen extensions to get current font values when redrawing
-include "nornsLib/screenExtensions"
+include "nornsLib/screenExt"
 
 -- For keeping track of original redraw() so that it can be used within the modified code
 local original_redraw_function = params_menu.redraw
