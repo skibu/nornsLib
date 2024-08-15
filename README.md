@@ -1,5 +1,5 @@
 # nornsLib
-Useful Lua libraries for Norns synth to make it easier to create scripts that are user friendly. There are currently two separate library files. You only need to include what you want to actually use.
+Useful Lua libraries for Norns synth to make it easier to create scripts that are user friendly. There are currently two separate library files. You only need to include what you want to actually use. The initial motivation was to help in creating the `https://github.com/skibu/nornsLib/taweeet` Norns script.
 
 ## `json = include "nornsLib/jsonExt"`
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
