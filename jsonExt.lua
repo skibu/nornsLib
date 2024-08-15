@@ -69,6 +69,15 @@ local function spaces(levels, indent_per_level)
 end
 
 
+-- Really silly, but need custom function to determine size of associative array
+-- since Lua doesn't provide one.
+function associativeArrayLength(tbl)
+  local count = 0
+  for _ in pairs(tbl) do count = count + 1 end
+  return count
+end
+
+
 local function encode_table(val, stack, indent)
   local res = {}
   stack = stack or {}
@@ -80,7 +89,7 @@ local function encode_table(val, stack, indent)
   if stack[val] then error("circular reference") end
 
   -- For indentation
-  local depth = tab.count(stack)
+  local depth = associativeArrayLength(stack)
 
   stack[val] = true
   
@@ -150,19 +159,20 @@ local type_func_map = {
 }
 
 
-encode = function(val, stack, indent)
-  local t = type(val)
+encode = function(tbl, stack, indent)
+  local t = type(tbl)
   local f = type_func_map[t]
   if f then
-    return f(val, stack, indent)
+    return f(tbl, stack, indent)
   else
     error("unexpected type '" .. t .. "'")
   end
 end
 
 
-function json.encode(val, indent)
-  return ( encode(val, {}, indent) )
+-- Converts table to a json string, using indent spacing specified (default of 2)
+function json.encode(tbl, indent)
+  return ( encode(tbl, {}, indent) )
 end
 
 
@@ -417,5 +427,49 @@ function json.decode(str)
   return res
 end
 
+------------------------- utilities ----------------------
 
+-- Prints out json representation of the tbl parameter, with default indentation of 2.
+function json.print(tbl)
+  print(json.encode(tbl))
+end
+
+
+-- Writes table object to a file in json format
+function json.write(tbl, filename)
+  -- When creating the file need to first make sure the associated directory is created
+  util.make_dir_for_file(filename)
+
+  -- Data to be written
+  local json_str = json.encode(tbl)
+
+  -- Open the file and write the json to it.
+  local file = assert(io.open(filename, "w"))
+  file:write(json_str)
+  file:close()
+end
+
+
+-- Reads json file and converts the json into a table object and returns it. If the file
+-- doesn't exist then returns nil.
+function json.read(filename)
+  -- If file doesn't exist just return nil
+  if not util.file_exists(filename) then
+    return nil
+  end
+
+  -- Get json contents of file
+  local file = io.open(filename, "r")
+  local json_str = file:read("*a") -- "*a" means read entire file
+
+  -- Convert json to a Lua table
+  local tbl = json.decode(json_str)
+
+  -- Close file and return results
+  file:close()
+  return tbl
+end
+
+
+-- Retun the json object so that all of the public functions can be accessed
 return json
