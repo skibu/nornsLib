@@ -69,15 +69,6 @@ local function spaces(levels, indent_per_level)
 end
 
 
--- Really silly, but need custom function to determine size of associative array
--- since Lua doesn't provide one.
-function associativeArrayLength(tbl)
-  local count = 0
-  for _ in pairs(tbl) do count = count + 1 end
-  return count
-end
-
-
 local function encode_table(val, stack, indent)
   local res = {}
   stack = stack or {}
@@ -89,7 +80,7 @@ local function encode_table(val, stack, indent)
   if stack[val] then error("circular reference") end
 
   -- For indentation
-  local depth = associativeArrayLength(stack)
+  local depth = tab.count(stack)
 
   stack[val] = true
   
