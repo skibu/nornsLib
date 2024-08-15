@@ -462,5 +462,29 @@ function json.read(filename)
 end
 
 
+-- Does a json api call to the specified url and converts the JSON 
+-- to a Lua table. This is done via a curl call. Allows compressed
+-- data to be provided. You can optionally provide custom headers
+-- by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
+function json.get(url, custom_headers)
+  -- Deal with the headers. 
+  local json_headers = { ["Accept"] = "application/json",
+                         ["Content-Type"] = "application/json"}
+  local full_headers = tab.update(json_headers, custom_headers or {})
+  local headers_str = ""
+  for k,v in pairs(full_headers) do
+    headers_str = headers_str .. ' --header "'..k..': "'..v..'"'
+  end
+
+  -- Execute the command
+  local cmd = 'curl --silent --max-time 10 --compressed' .. headers_str ..
+      ' "' .. url .. '"'
+  local json_str = util.execute_command(cmd)
+
+  -- Turn the json into a Lua table and return
+  return json.decode(json_str)
+end
+
+
 -- Retun the json object so that all of the public functions can be accessed
 return json
