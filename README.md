@@ -13,6 +13,13 @@ Converts a JSON string into a Lua table.
 ### json.print(tbl)
 A great replacement for `tab.pring()`. This function prints the table in JSON format, and can show all levels. Worth the price of admission!
 
+### json.write(tbl, filename)
+Writes table object to a file in json format
+
+### tbl = json.read(filename)
+Reads json file and converts the json into a table object and returns it. If the file
+doesn't exist then returns nil.
+
 ## `include "nornsLib/parameterExt"`
 The parameter extensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
 
@@ -60,9 +67,6 @@ And lastly, screen.clear() is overriden to deal with a bug when writing an image
 
 ## `include "nornsLib/utilExt"`
 
-# Using NornsLib in your script
-The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
-
 ### util.execute_command(command)
 Like os.execute() but returns the result string from the command. And different
 from util.os_capture() by having a more clear name, and by only filtering out
@@ -92,12 +96,14 @@ If dir doesn't already exist, creates directory for a file that is about
 to be written. Different from `util.make_dir()` in that `util.make_dir_for_file()`
 can take in file name and determine the directory from it. 
 
-
 ### encoded = util.urlencode(url)
 For encoding a url that has special characters.
 
 ### util.urldecode(url)
 For decoding a url with special characters
+
+# Using NornsLib in your script
+The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
 
 ### fullNornsLibInclude.lua:
 You can copy and paste the script below or do a `wget https://raw.githubusercontent.com/skibu/nornsLib/main/fullNornsLibInclude.lua`. And then just include this nornsLib script from your application script using something like `include "appLib/fullNornsLibInclude"`. And of course feel free to make needed changes to your copy of this file. For example, you might want to include just particular nornsLib extension files, e.g. `include "nornsLib/utilExt"` instead of all the extensions via `include "nornsLib/includeAllExt"`
