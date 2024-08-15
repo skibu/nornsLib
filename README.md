@@ -22,6 +22,12 @@ Writes table object to a file in json format
 Reads json file and converts the json into a table object and returns it. If the file
 doesn't exist then returns nil.
 
+### tbl = json.get(url, custom_headers)
+Does a json api call to the specified url and converts the JSON 
+to a Lua table. This is done via a curl call. Allows compressed
+data to be provided. You can optionally provide custom headers
+by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
+
 ## `include "nornsLib/parameterExt"`
 The parameter extensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
 
