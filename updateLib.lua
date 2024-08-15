@@ -1,9 +1,13 @@
+-- Note: just by including this file nornsLib will be updated on the user's device
+-- from GitHub.
+--
 -- update_lib() is for optionally downloading or updating a Norns library from a git 
 -- repository. If the library doesn't already exist then it is cloned from the repo. 
 -- If it already exists then the library is updated. By using this function the user
 -- will get any updates to the library.
 --
--- If you are just dealing with nornsLib you can simply call update_nornsLib().
+-- If just dealing with nornsLib then can simply call update_nornsLib() which calls
+-- update_lib() with the appropriate parameters.
 --
 -- Of course NornsLib must already have been downloaded for these function
 -- to be available. This means that if a script wants to use NornsLib it
@@ -41,4 +45,6 @@ function update_nornsLib()
   update_lib("skibu", "nornsLib")
 end
 
-  
+
+-- Actually do the update
+update_nornsLib()
