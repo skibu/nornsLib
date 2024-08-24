@@ -1,6 +1,8 @@
 # nornsLib
 Useful Lua libraries for Norns synth to make it easier to create scripts that are user friendly. There are currently two separate library files. You only need to include what you want to actually use. The initial motivation was to help in creating the `https://github.com/skibu/nornsLib/taweeet` Norns script.
 
+See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
+
 ## `json = include "nornsLib/jsonExt"`
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
@@ -19,6 +21,12 @@ Writes table object to a file in json format
 ### tbl = json.read(filename)
 Reads json file and converts the json into a table object and returns it. If the file
 doesn't exist then returns nil.
+
+### tbl = json.get(url, custom_headers)
+Does a json api call to the specified url and converts the JSON 
+to a Lua table. This is done via a curl call. Allows compressed
+data to be provided. You can optionally provide custom headers
+by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
 ## `include "nornsLib/parameterExt"`
 The parameter extensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
@@ -86,6 +94,11 @@ optimized. The time is shortened to only show 4 digits to left of decimal point,
 and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
 are just truncated instead of rounded because that level of precision is not
 actually useful for print statements.
+
+### util.get_filename(full_filename)
+For getting just the filename from full directory path. Returns what is after
+the last slash of the full filename. If full filename doesn't have any slashes
+then full_filename is returned.
 
 ### util.get_dir(full_filename)
 For finding the directory of a file. Useful for creating file in a directory that
