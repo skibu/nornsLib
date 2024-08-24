@@ -43,6 +43,26 @@ function util.tprint(obj)
 end
 
 
+-- Does a util.tprint(), but only if the global debug_mode is set to true.
+-- Great for debugging.
+function util.debug_tprint(obj)
+  if debug_mode then util.tprint(obj) end
+end
+
+
+-- For getting just the filename from full directory path. Returns what is after
+-- the last slash of the full filename. If full filename doesn't have any slashes
+-- then full_filename is returned.
+function util.get_filename(full_filename)
+  local last_slash = (full_filename:reverse()):find("/")
+  if last_slash == nil then
+    return full_filename
+  else
+    return full_filename:sub(-last_slash+1)
+  end
+end
+
+
 -- For finding the directory of a file. Useful for creating file in a directory that
 -- doesn't already exist
 function util.get_dir(full_filename)
@@ -96,4 +116,93 @@ function util.urldecode(url)
   url = url:gsub("+", " ")
   url = url:gsub("%%(%x%x)", hex_to_char)
   return url
+end
+
+
+-------------------- For waiting for file to be loaded -----------------------
+
+-- Modifying standard _norns.metro() so that it also passes in the metro timer
+-- to the callback function. This way the callback function can do things like
+-- release the timer.
+_norns.metro = function(idx, stage)
+  local m = metro.metros[idx]  -- Lower case metro because being accessed outside of metro.lua
+  if m then
+    if m.event then
+      m.event(stage, m)
+    end
+    if m.count > -1 then
+      if (stage > m.count) then
+        m.is_running = false
+      end
+    end
+  end
+end
+
+
+-- Called every clock tick when waiting for a file to be ready
+local function _wait_for_file_callback(stage, mtro)
+  local filename = mtro._file
+
+  -- Can get extra ticks after already called the callback. If so, just
+  -- ignore since already done.
+  if mtro._done then return end
+  
+  -- See if file exists and has stopped growing
+  if util.file_exists(filename) then
+    current_size = util.file_size(filename)
+    if current_size == mtro._prev_file_size then
+      -- File exists and is no longer changing size. Done so wrap things up
+      util.debug_tprint("File fully loaded so calling callback. ".. util.get_filename(filename))
+
+      -- Done waiting so done with timer
+      mtro:stop()
+      metro.free(mtro.id)
+      
+      -- Even though stopped timer it turns out that might still get a few more ticks.
+      -- Therefore mark the metro as being done with it.
+      mtro["_done"] = true
+    
+      -- Call the callback
+      mtro._file_available_callback(filename)
+    else
+      -- File still changing size so not ready yet
+      util.debug_tprint("File still changing size so waiting. ".. util.get_filename(filename) .." size=" .. current_size) 
+      mtro._prev_file_size = current_size
+    end
+  else
+    -- File doesn't even exist yet
+    mtro._prev_file_size = 0
+    util.debug_tprint("Waiting for file to exist ".. util.get_filename(filename)) 
+  end
+  
+  -- If exceeded allowable counts then give up. Free the timer
+  if mtro.count > -1 and stage >= mtro.count then
+    util.tprint("Exceeded count so giving up waiting for file=" .. filename)
+    metro.free(mtro.id)
+  end
+end
+
+
+-- Waits until the file specified exists and is not changing in size. Uses an 
+-- available metro timer, and frees it once done.
+-- Recommend a tick_time of 0.1 to 0.2 seconds. 
+-- max_time specifies how long should wait. Must be at least 1.0 second.
+function util.wait(full_filename, file_available_callback, tick_time, max_time)
+  local count = max_time / tick_time
+  
+  wait_metro = metro.init(_wait_for_file_callback, tick_time, count)
+  
+  -- Add filename to be waited for to the metro object
+  wait_metro["_file"] = full_filename
+  
+  -- Store the callback in the metro
+  wait_metro["_file_available_callback"] = file_available_callback
+  
+  -- Init _prev_file_size
+  wait_metro["_prev_file_size"] = 0
+  
+  wait_metro["_done"] = false
+  
+  -- And start that timer!
+  wait_metro:start()
 end
