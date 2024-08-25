@@ -67,8 +67,10 @@ These functions are:
 * screen.current_aa()
 
 There is also a function for determining the size of an image buffer. This is quite handy for if you want to do something like center a PNG image when usingi an image buffer. The function is:
-* screen.extents()
-and it returns the `width, height` of the image buffer.
+* screen.extents() and it returns the `width, height` of the image buffer.
+
+And there is a function for freeing an image buffer when you are done with it. Make sure you only call this once on an image buffer. Otherwise the system will likely crash.
+* screen.free(image_buffer)
 
 And lastly, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
 * screen.clear() - fixes existing function
