@@ -140,12 +140,18 @@ local function encode_function(val)
 end
 
 
+local function encode_userdata(val)
+  return '"'..tostring(val)..'"'
+end  
+
+
 local type_func_map = {
   [ "nil"     ] = encode_nil,
   [ "table"   ] = encode_table,
   [ "string"  ] = encode_string,
   [ "number"  ] = encode_number,
   [ "function"] = encode_function,
+  [ "userdata"] = encode_userdata,
   [ "boolean" ] = tostring,
 }
 
