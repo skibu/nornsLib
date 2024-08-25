@@ -46,7 +46,7 @@ end
 -- Does a util.tprint(), but only if the global debug_mode is set to true.
 -- Great for debugging.
 function util.debug_tprint(obj)
-  if debug_mode then util.tprint(obj) end
+  if debug_mode then util.tprint("Debug: "..obj) end
 end
 
 
