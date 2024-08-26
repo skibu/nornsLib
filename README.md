@@ -97,6 +97,14 @@ and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
 are just truncated instead of rounded because that level of precision is not
 actually useful for print statements.
 
+### util.debug_tprint(obj)
+Like util.tprint(obj), but only prints the timestamped message if debug_mode global 
+is set to true. Great for debugging.
+
+### util.debug_print(obj)
+Like print(), but only does the print if debug_mode global set to true. Useful 
+for debugging.
+
 ### util.get_filename(full_filename)
 For getting just the filename from full directory path. Returns what is after
 the last slash of the full filename. If full filename doesn't have any slashes
