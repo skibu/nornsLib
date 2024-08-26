@@ -88,6 +88,17 @@ screen.extents = function(image_buffer)
   return extents_function(image_buffer)
 end  
 
+
+--------------------------- screen.free() -------------------------------
+
+-- Garbage collects the specified image buffer.
+-- Note: you definitely can only call this function once on an image buffer.
+-- If you do so again the system can easily crash.
+screen.free = function(image_buffer)
+  getmetatable(image_buffer)["__gc"](image_buffer)
+end
+
+
 --------------------------- screen.clear() -------------------------------
 
 -- In the 240424 there is a bug when writing an image buffer after screen.clear() is 
