@@ -8,6 +8,8 @@
 
 ------------------------------------------------------------------------------------------
 
+local first_time_jumping_to_edit_params = true
+
 -- This two functions need to be loaded everytime since it is a global function. Therefore
 -- it is defined before the code that returns from this script if was read in before.
 
@@ -33,12 +35,18 @@ function jump_to_edit_params_screen()
   local tSEPARATOR = params_metatable.tSEPARATOR
   local tTEXT = params_metatable.tTEXT
   
-  -- Set to first settable item
-  params_class.pos = 0 -- For if don't find appropriate one
-  for idx=1,#params.params do
-    if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
-      params_class.pos = idx - 1 -- oddly the index for parameters is zero based
-      break
+  -- Set to first settable item if the first time jumping to edit params menu.
+  -- But if have already done this then should just keep the user's previous
+  -- selection.
+  if first_time_jumping_to_edit_params then
+    first_time_jumping_to_edit_params = false
+    
+    params_class.pos = 0 -- For if don't find appropriate one
+    for idx=1,#params.params do
+      if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
+        params_class.pos = idx - 1 -- oddly the index for parameters is zero based
+        break
+      end
     end
   end
   
