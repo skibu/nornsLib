@@ -57,8 +57,21 @@ function jump_to_edit_params_screen()
   params_class.init()
 end
 
+---------------------------------------------------------------------------------------------
 
--- Display current selector value for param param_idx. 
+-- Optional way of specifying a function that can shorten the string when it is too long.
+-- This function will only be called when a parameter value is too long to fit without
+-- overlapping. The function should take in the string parameter value and return the
+-- possibly shorter version. A way this might be done to remove spaces after commas
+-- is: function shorten() return param:gsub(", ", ",") end
+local _shortener_function = nil
+function selector_shortener(shortener_function)
+  _shortener_function = shortener_function
+end
+
+
+-- Display current selector value for param param_idx. But do so without the
+-- value overlapping the label.
 -- For norns/lua/core/menu/params.lua
 function output_value_without_overlap(value_str, label_str, original_text_right_func)
   -- If value is nil don't try to process it
@@ -71,6 +84,20 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   local orig_aa = screen.current_aa()
 
   if label_width + value_width + 2 > 127 then
+    -- The value text is too long. First try shortening the text if a shortener 
+    -- function was specified
+    if _shortener_function ~= nil then
+      -- Get possibly shorter value_str and see if now narrow enough
+      value_str = _shortener_function(value_str)
+      value_width = screen.text_extents(value_str)
+      if label_width + value_width + 2 <= 127 then
+        -- Now narrow enough so actually draw the value text, and use the 
+        -- original text_right() function
+        original_text_right_func(value_str)
+        return
+      end
+    end
+    
     -- The value text is too long. First try using smaller font. It is important to make
     -- sure that anti-aliasing is off because it screws up some small fonts like Roboto.
     -- The font for the edit params page is set in core/menu.lua _menu.set_mode(). 
@@ -103,6 +130,7 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   if screen.current_font_face() ~= orig_font_face then screen.font_face(orig_font_face) end
   if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
 end
+
 
 ---------------------------------------------------------------------------------------------
 
@@ -141,16 +169,16 @@ local possible_label
 -- be called instead of screen.text_right. This way can make sure that the option
 -- label and values don't overlap. 
 params_menu.redraw = function()
-  -- Switch to using special screen.text() function that stores the last text
-  -- written using screen.text(str)
+  -- Temporarily switch to using special screen.text() function that stores the last
+  -- text written using screen.text(str)
   local original_text_func = screen.text
   screen.text = function(str)
     possible_label = str
     original_text_func(str)
   end
   
-  -- Switch to using special screen.text_right() function that if text too wide
-  -- it draws it smaller so that it won't overlap with the label text written to
+  -- Temporarily switch to using special screen.text_right() function that if text too
+  -- wide it draws it smaller so that it won't overlap with the label text written to
   -- the left.
   local original_text_right_func = screen.text_right
   screen.text_right = function(value) 
@@ -165,7 +193,8 @@ params_menu.redraw = function()
     end
   end
 
-  -- Call the original redraw function
+  -- Call the original redraw function, which will in turn use the temporary 
+  -- screen.text() and screen.text_right() functions
   original_redraw_function()
   
   -- Restore the screen.text() and screen.text_right() functions
@@ -175,7 +204,7 @@ end
 
 
 ----------------------------------------------------------------------------------
----------- Hnadle key1 better and be able to jump straight to params page --------
+---------- Handle key1 better and be able to jump straight to params page --------
 ----------------------------------------------------------------------------------
 
 -- Override _norns.key function. This modified function handles all button presses 
