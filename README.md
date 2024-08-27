@@ -92,7 +92,9 @@ be used judiciously.
 ### util.epochtime_str()
 Retuns epoch time string with with nanosecond precision, by doing a system 
 call. Note that because the number of characters one cannot just convert this
-to a number via tonumber() because would then loose resolution.
+to a number via tonumber() because would then loose resolution. And yes, it
+is doubtful that nono second resolution will be useful since doing a system
+call, which takes a while. Therefore util.time() will usually be sufficient.
 
 ### util.tprint(obj)
 Like print(), but puts the epoch time in front. Really nice for understanding what
