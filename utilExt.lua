@@ -31,7 +31,9 @@ end
 
 -- Retuns epoch time string with with nanosecond precision, by doing a system 
 -- call. Note that because the number of characters one cannot just convert this
--- to a number via tonumber() because would then lose resolution.
+-- to a number via tonumber() because would then lose resolution. And yes, it
+-- is doubtful that nono second resolution will be useful since doing a system
+-- call, which takes a while. Therefore util.time() will usually be sufficient.
 function util.epochtime_str()
   return util.execute_command("date +%s.%N")
 end
@@ -43,7 +45,14 @@ end
 -- and 4 digits to the right. Showing more would just be kind of ugly. 
 function util.tprint(obj)
   local truncated_time = (math.floor(util.time()*10000) % 100000000)/10000.0
-  print(truncated_time .. " - " .. tostring(obj))
+  local truncated_time_str = tostring(truncated_time)
+  
+  -- Zero pad end so always same length of 9 digits (need to use 8 for max)
+  for i=string.len(truncated_time_str), 8 do
+    truncated_time_str = truncated_time_str.."0"
+  end
+  
+  print(truncated_time_str .. " - " .. tostring(obj))
 end
 
 
