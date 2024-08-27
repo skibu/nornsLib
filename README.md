@@ -84,6 +84,11 @@ last character if a newline. This means it works well for both shell commands
 like 'date' and also accessing APIs that can provide binary data, such as using
 curl to get an binary file.
 
+### util.sleep(seconds)
+Sleeps specified fraction number of seconds. Implemented by doing a system call.
+Note that this will lock out the UI for the specified amount of time, so should
+be used judiciously.
+
 ### util.epochtime_str()
 Retuns epoch time string with with nanosecond precision, by doing a system 
 call. Note that because the number of characters one cannot just convert this

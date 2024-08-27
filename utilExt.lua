@@ -21,6 +21,14 @@ function util.execute_command(command)
 end
 
 
+-- Sleeps specified fraction number of seconds. Implemented by doing a system call.
+-- Note that this will lock out the UI for the specified amount of time, so should
+-- be used judiciously.
+function util.sleep(seconds)
+  os.execute("sleep "..seconds)
+end
+
+
 -- Retuns epoch time string with with nanosecond precision, by doing a system 
 -- call. Note that because the number of characters one cannot just convert this
 -- to a number via tonumber() because would then lose resolution.
