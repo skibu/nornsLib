@@ -71,17 +71,21 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   local orig_aa = screen.current_aa()
 
   if label_width + value_width + 2 > 127 then
-    -- The value text is too long. First try using smaller font. Found that
-    -- best somewhat smaller font is index 5 Roboto-Regular at size 7.
-    -- Anything smaller is simply not readable. And it is important to make
-    -- sure that anti-aliasing is off because it screws up some fonts like Robot.
-    -- If want another smaller font can try 25 size 6, though it is actually wider
-    -- than Roboto-Regular size 7. The font for the edit params page is set in 
-    -- core/menu.lua _menu.set_mode(). Default font size is 8 and default font 
-    -- face is 1.
+    -- The value text is too long. First try using smaller font. It is important to make
+    -- sure that anti-aliasing is off because it screws up some small fonts like Roboto.
+    -- The font for the edit params page is set in core/menu.lua _menu.set_mode(). 
+    -- Default font size is 8 and default font face is 1. 
+    --
+    -- To understand the fonts really need to use nornsFun/bestFont.lua script. 
+    -- 
+    -- Font 1 Norns size 8 get 28 chars - the default. Looks good, but would like to get more chars.
+    -- Font 1 Norns size 7 get 28 1/2 chars - readable but not really any narrower
+    -- Font 2 Liquid size 8 get 34 1/2 chars - pretty readable chars, but looks really funny
+    -- Font 5 Roboto-Regular size 7 get 37 chars - really narrow, but just not readable enough
+    -- font 25 bmp size 6 get 31 chars - quite readable. Not much more narrow, but seemsm like best
     screen.aa(0)
-    screen.font_face(5)
-    screen.font_size(7)
+    screen.font_face(25)
+    screen.font_size(6)
     value_width = screen.text_extents(value_str)
     if label_width + value_width + 2 > 127 then
       -- Still too long. Don't want to try even smaller font so
