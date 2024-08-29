@@ -204,7 +204,7 @@ end
 function util.wait(full_filename, file_available_callback, tick_time, max_time)
   -- If file already exists and is not empty then call the callback immediately
   if util.file_exists(full_filename) and util.file_size(full_filename) > 0 then
-    util.debug_tprint("File already available. file="..full_filename)
+    util.debug_tprint("File already available so calling callback. file="..full_filename)
     file_available_callback(full_filename)
     return
   end
