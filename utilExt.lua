@@ -44,15 +44,9 @@ end
 -- optimized. The time is shortened to only show 4 digits to left of decimal point,
 -- and 4 digits to the right. Showing more would just be kind of ugly. 
 function util.tprint(obj)
-  local truncated_time = (math.floor(util.time()*10000) % 100000000)/10000.0
-  local truncated_time_str = tostring(truncated_time)
+  time_str = string.format("%.4f", util.time() % 10000)
   
-  -- Zero pad end so always same length of 9 digits (need to use 8 for max)
-  for i=string.len(truncated_time_str), 8 do
-    truncated_time_str = truncated_time_str.."0"
-  end
-  
-  print(truncated_time_str .. " - " .. tostring(obj))
+  print(time_str .. " - " .. tostring(obj))
 end
 
 
@@ -172,7 +166,7 @@ local function _wait_for_file_callback(stage, mtro)
     current_size = util.file_size(filename)
     if current_size == mtro._prev_file_size then
       -- File exists and is no longer changing size. Done so wrap things up
-      util.debug_tprint("File fully loaded so calling callback. ".. util.get_filename(filename))
+      util.tprint("File fully loaded so calling callback. ".. util.get_filename(filename))
 
       -- Done waiting so done with timer
       mtro:stop()
@@ -192,7 +186,7 @@ local function _wait_for_file_callback(stage, mtro)
   else
     -- File doesn't even exist yet
     mtro._prev_file_size = 0
-    util.debug_tprint("Waiting for file to exist ".. util.get_filename(filename)) 
+    --util.debug_tprint("Waiting for file to exist ".. util.get_filename(filename)) 
   end
   
   -- If exceeded allowable counts then give up. Free the timer
@@ -210,7 +204,7 @@ end
 function util.wait(full_filename, file_available_callback, tick_time, max_time)
   -- If file already exists and is not empty then call the callback immediately
   if util.file_exists(full_filename) and util.file_size(full_filename) > 0 then
-    util.debug_tprint("File already available for file="..full_filename)
+    util.debug_tprint("File already available. file="..full_filename)
     file_available_callback(full_filename)
     return
   end
