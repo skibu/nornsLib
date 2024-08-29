@@ -18,6 +18,8 @@ local first_time_jumping_to_edit_params = true
 -- feature since it makes param changes easier. This function should be called in the
 -- script's key() method for key1 is released. 
 function jump_to_edit_params_screen()
+  util.debug_tprint("Jumping to parameter menu screen")
+  
   -- Change to menu mode 
   _menu.set_mode(true) 
 
