@@ -166,7 +166,8 @@ local function _wait_for_file_callback(stage, mtro)
     current_size = util.file_size(filename)
     if current_size == mtro._prev_file_size then
       -- File exists and is no longer changing size. Done so wrap things up
-      util.tprint("File fully loaded so calling callback. ".. util.get_filename(filename))
+      util.tprint("File fully loaded so calling callback. ".. 
+        util.get_filename(filename).." size="..current_size)
 
       -- Done waiting so done with timer
       mtro:stop()
