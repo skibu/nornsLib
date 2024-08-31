@@ -85,8 +85,6 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   local orig_font_face = screen.current_font_face()
   local orig_aa = screen.current_aa()
   
-  util.debug_tprint("XXX FIXME For label_str="..label_str.." label_width="..label_width)
-
   if label_width + value_width + 2 > 127 then
     -- The value text is too long. First try shortening the text if a shortener 
     -- function was specified
