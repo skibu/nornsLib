@@ -66,8 +66,20 @@ These functions are:
 * screen.current_font_face()
 * screen.current_aa()
 
+Also, the standard screen.text_extents() function has a notable flaw. It doesn't provide 
+the proper width of a string if the string is padded by spaces. Somewhere the string
+is inappropriately trimmed. This is a problem even if padding with a half space \u{2009}
+or a hair space \u{200A}. Could not determine where the string is getting inappropriately
+trimmed so cannot fix the code directly. Instead, screen.text_untrimmed_extents(str)
+should be used instead of screen.text_extents(str) if the string might be padded. Don't
+want to use this for every situation though because this function actually makes two
+calls to the original screen_text_extents(), which slows things down a bit, especially
+since they are blocking calls. Therefore this function should only be used when the 
+string in question actually might be padded.
+* screen.text_untrimmed_extents(str)
+
 There is also a function for determining the size of an image buffer. This is quite handy for if you want to do something like center a PNG image when usingi an image buffer. The function is:
-* screen.extents() and it returns the `width, height` of the image buffer.
+* screen.extents(image_buffer) and it returns the `width, height` of the image buffer.
 
 And there is a function for freeing an image buffer when you are done with it. Make sure you only call this once on an image buffer. Otherwise the system will likely crash.
 * screen.free(image_buffer)

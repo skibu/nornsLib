@@ -1,5 +1,25 @@
 -- Extension to augment the Norns Screen functions
 
+
+-- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
+-- the proper width of a string if the string is padded by spaces. Somewhere the string
+-- is inappropriately trimmed. This is a problem even if padding with a half space \u{2009}
+-- or a hair space \u{200A}. Could not determine where the string is getting inappropriately
+-- trimmed so cannot fix the code directly. Instead, screen.text_untrimmed_extents(str)
+-- should be used instead of screen.text_extents(str) if the string might be padded. Don't
+-- want to use this for every situation though because this function actually makes two
+-- calls to the original screen_text_extents(), which slows things down a bit, especially
+-- since they are blocking calls. Therefore this function should only be used when the 
+-- string in question actually might be padded.
+-- This is a additional screen function instead of a replacement one. Therefore it can 
+-- be loaded multiple times and does not needed to be protected by screen["already_included"].
+function screen.text_untrimmed_extents(str)
+  local width_with_extra_chars, height = screen.text_extents("x"..str.."x")
+  local width_of_extra_chars = screen.text_extents("x".."x")
+  return width_with_extra_chars - width_of_extra_chars, height
+end  
+  
+  
 -- Make sure this file only loaded once. This prevents infinite recursion when 
 -- overriding system functions. Bit complicated because need to use something
 -- that lasts across script restarts. The solution is to use add a boolean to
@@ -65,7 +85,7 @@ end
 
 ------------------------ screen.extents() ----------------------------------
 
--- Wacky useful function that returns extents of specified image buffer.
+-- Quite a useful function that returns extents of specified image buffer.
 -- This was quite difficult to figure out because had to search
 -- around to find out about userdata objects and getmetatable(),
 -- and then look at the weaver.c source code to find out about
@@ -89,7 +109,7 @@ screen.extents = function(image_buffer)
 end  
 
 
---------------------------- screen.free() -------------------------------
+--------------------------- screen.free(image_buffer) -----------------------------
 
 -- Garbage collects the specified image buffer.
 -- Note: you definitely can only call this function once on an image buffer.

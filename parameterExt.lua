@@ -61,7 +61,7 @@ end
 
 ---------------------------------------------------------------------------------------------
 
--- Optional way of specifying a function that can shorten the string when it is too long.
+-- An option for specifying a function that can shorten the string when it is too long.
 -- This function will only be called when a parameter value is too long to fit without
 -- overlapping. The function should take in the string parameter value and return the
 -- possibly shorter version. A way this might be done to remove spaces after commas
@@ -79,11 +79,13 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   -- If value is nil don't try to process it
   if value_str == nil then return end
   
-  local label_width = screen.text_extents(label_str)
-  local value_width = screen.text_extents(value_str)
+  local label_width = screen.text_untrimmed_extents(label_str)
+  local value_width = screen.text_untrimmed_extents(value_str)
   local orig_font_size = screen.current_font_size()
   local orig_font_face = screen.current_font_face()
   local orig_aa = screen.current_aa()
+  
+  util.debug_tprint("XXX FIXME For label_str="..label_str.." label_width="..label_width)
 
   if label_width + value_width + 2 > 127 then
     -- The value text is too long. First try shortening the text if a shortener 
@@ -91,7 +93,7 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
     if _shortener_function ~= nil then
       -- Get possibly shorter value_str and see if now narrow enough
       value_str = _shortener_function(value_str)
-      value_width = screen.text_extents(value_str)
+      value_width = screen.text_untrimmed_extents(value_str)
       if label_width + value_width + 2 <= 127 then
         -- Now narrow enough so actually draw the value text, and use the 
         -- original text_right() function
@@ -115,7 +117,7 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
     screen.aa(0)
     screen.font_face(25)
     screen.font_size(6)
-    value_width = screen.text_extents(value_str)
+    value_width = screen.text_untrimmed_extents(value_str)
     if label_width + value_width + 2 > 127 then
       -- Still too long. Don't want to try even smaller font so
       -- move the value further to right so there is no overlap
@@ -166,7 +168,7 @@ include "nornsLib/screenExt"
 local original_redraw_function = params_menu.redraw
 local possible_label
 
--- The new redraw() function. Temporarily witches to using special screen.text() 
+-- The new redraw() function. Temporarily switches to using special screen.text() 
 -- and screen.text_right() functions that allow output_value_without_overlap() to
 -- be called instead of screen.text_right. This way can make sure that the option
 -- label and values don't overlap. 
