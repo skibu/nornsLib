@@ -34,6 +34,11 @@ The parameter extensions library does two main things: 1) prevents overlap for o
 ### Preventing overlap for parameter option
 This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
 
+### Left align parameter values
+The default of having the parameter values being right justified makes them look quitei jumbly. But now they can be left aligned. One simply needs to call `set_left_align_parameter_values(true)` at initialization to do so.
+
+Left alignment of parameter values works especially well if the right sides of the parameter labels are aligned. This can be done by padding the left of the parameter labels by spaces of various widths, until they align. Note: while a normal space char " " is 5 pixels wide, one can use a half space char "\u{2009}" of 3 pixels or and even skinnier hair space "\u{200A}" that is just a single pixel wide.
+
 ### Easier navigation to the script's parameter page
 One of the great thing about a Norns is that the application scripts can have lots of parameters, allowing the user to finely control things. But the default method for getting to the parameters is quite clunky and dissuades users.
 
