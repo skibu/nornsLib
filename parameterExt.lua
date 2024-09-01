@@ -67,15 +67,28 @@ end
 -- possibly shorter version. A way this might be done to remove spaces after commas
 -- is: function shorten() return param:gsub(", ", ",") end
 local _shortener_function = nil
-function selector_shortener(shortener_function)
+function set_selector_shortener(shortener_function)
   _shortener_function = shortener_function
 end
 
 
+-- Normally the value text for menu parameters are displayed right justified. But it
+-- can look better to have them be left justified and thereby line up visually.
+local _left_align = false
+function set_left_align_parameter_values(should_left_align)
+  _left_align = should_left_align
+end
+
+
+-- Remember the original functions so they can be used in output_value_without_overlap()
+local _original_text_right_func = screen.text_right
+local _original_text_func = screen.text
+
+
 -- Display current selector value for param param_idx. But do so without the
 -- value overlapping the label.
--- For norns/lua/core/menu/params.lua
-function output_value_without_overlap(value_str, label_str, original_text_right_func)
+-- Replacement for code in norns/lua/core/menu/params.lua
+local function output_value_without_overlap(value_str, label_str)
   -- If value is nil don't try to process it
   if value_str == nil then return end
   
@@ -85,47 +98,48 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   local orig_font_face = screen.current_font_face()
   local orig_aa = screen.current_aa()
   
-  if label_width + value_width + 2 > 127 then
+  -- If label & value combined is too wide then adjust
+  if label_width + value_width + 0 > 128 then
     -- The value text is too long. First try shortening the text if a shortener 
     -- function was specified
     if _shortener_function ~= nil then
       -- Get possibly shorter value_str and see if now narrow enough
       value_str = _shortener_function(value_str)
       value_width = screen.text_untrimmed_extents(value_str)
-      if label_width + value_width + 2 <= 127 then
-        -- Now narrow enough so actually draw the value text, and use the 
-        -- original text_right() function
-        original_text_right_func(value_str)
-        return
-      end
     end
     
-    -- The value text is too long. First try using smaller font. It is important to make
-    -- sure that anti-aliasing is off because it screws up some small fonts like Roboto.
-    -- The font for the edit params page is set in core/menu.lua _menu.set_mode(). 
-    -- Default font size is 8 and default font face is 1. 
-    --
-    -- To understand the fonts really need to use nornsFun/bestFont.lua script. 
-    -- 
-    -- Font 1 Norns size 8 get 28 chars - the default. Looks good, but would like to get more chars.
-    -- Font 1 Norns size 7 get 28 1/2 chars - readable but not really any narrower
-    -- Font 2 Liquid size 8 get 34 1/2 chars - pretty readable chars, but looks really funny
-    -- Font 5 Roboto-Regular size 7 get 37 chars - really narrow, but just not readable enough
-    -- font 25 bmp size 6 get 31 chars - quite readable. Not much more narrow, but seemsm like best
-    screen.aa(0)
-    screen.font_face(25)
-    screen.font_size(6)
-    value_width = screen.text_untrimmed_extents(value_str)
-    if label_width + value_width + 2 > 127 then
-      -- Still too long. Don't want to try even smaller font so
-      -- move the value further to right so there is no overlap
-      local needed_width = label_width + value_width + 2
-      screen.move_rel(needed_width - 128, 0)
+    -- If still too wide try using narrower font
+    if label_width + value_width + 0 > 128 then
+      -- The value text is too long. Try using smaller font. It is important to make
+      -- sure that anti-aliasing is off because it screws up some small fonts like Roboto.
+      -- The font for the edit params page is set in core/menu.lua _menu.set_mode(). 
+      -- Default font size is 8 and default font face is 1. 
+      --
+      -- To understand the fonts really need to use nornsFun/bestFont.lua script. 
+      -- 
+      -- Font 1 Norns size 8 get 28 chars - default. Looks good, but would like to get more chars.
+      -- Font 1 Norns size 7 get 28 1/2 chars - readable but not really any narrower
+      -- Font 2 Liquid size 8 get 34 1/2 chars - pretty readable chars, but looks really funny
+      -- Font 5 Roboto-Regular size 7 get 37 chars - really narrow, but just not readable enough
+      -- font 25 bmp size 6 get 31 chars - quite readable. Not much more narrow, but seems like best
+      screen.aa(0)
+      screen.font_face(25)
+      screen.font_size(6)
+      value_width = screen.text_untrimmed_extents(value_str)
     end
+  end    
+      
+  -- Now need to draw the value. If should left align, which also is true if text is still too
+  -- wide, then simply left align
+  if _left_align or label_width + value_width + 0 > 128 then
+    -- Output text left aligned
+    current_x, current_y = screen.current_point()
+    screen.move(label_width + 2, current_y)
+    _original_text_func(value_str)
+  else
+    -- Output text right aligned. Don't need to move the drawing point since this was original plan
+    _original_text_right_func(value_str)
   end
-
-  -- Actually draw the value text, and use the original text_right() function
-  original_text_right_func(value_str)
 
   -- If font size, face, or anti-aliasing were changed, restore them
   if screen.current_font_size() ~= orig_font_size then screen.font_size(orig_font_size) end
@@ -133,7 +147,7 @@ function output_value_without_overlap(value_str, label_str, original_text_right_
   if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
 end
 
-
+      
 ---------------------------------------------------------------------------------------------
 
 -- Make sure this file only loaded once. This prevents infinite recursion when 
@@ -187,11 +201,12 @@ params_menu.redraw = function()
     -- If the value and label are short such that there could not be overlap 
     -- then just use original simple text_right() function 
     if value ~= nill and possible_label ~= nil and 
-        string.len(value) + string.len(possible_label) < 24 then
+        string.len(value) + string.len(possible_label) < 24 and 
+        not _left_align then
       original_text_right_func(value)
     else
-      -- Longish labels so make sure they don't overlap
-      output_value_without_overlap(value, possible_label, original_text_right_func)
+      -- Either need to left align value or longish labels so make sure they don't overlap
+      output_value_without_overlap(value, possible_label)
     end
   end
 
