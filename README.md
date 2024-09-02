@@ -83,8 +83,8 @@ since they are blocking calls. Therefore this function should only be used when 
 string in question actually might be padded.
 * screen.text_untrimmed_extents(str)
 
-There is also a function for determining the size of an image buffer. This is quite handy for if you want to do something like center a PNG image when usingi an image buffer. The function is:
-* screen.extents(image_buffer) and it returns the `width, height` of the image buffer.
+There is also a new  function for determining the size of an image buffer called `screen.extents()`. One can pass in either an existing image buffer or a file name of a PNG file. This function is quite handy for if you want to do something like center a PNG image on the screen. The function is:
+* screen.extents(image_buffer) and it returns the `width, height` of the image buffer or PNG file.
 
 And there is a function for freeing an image buffer when you are done with it. Make sure you only call this once on an image buffer. Otherwise the system will likely crash.
 * screen.free(image_buffer)

@@ -86,11 +86,19 @@ end
 ------------------------ screen.extents() ----------------------------------
 
 -- Quite a useful function that returns extents of specified image buffer.
+-- Can also pass in a file name instead of an image buffer.
 -- This was quite difficult to figure out because had to search
 -- around to find out about userdata objects and getmetatable(),
 -- and then look at the weaver.c source code to find out about
 -- what info is available from an image buffer. 
 screen.extents = function(image_buffer)
+  -- If a file name provided then read in image buffer
+  local file_name_provided = false
+  if type(image_buffer) == "string" then
+    file_name_provided = true
+    image_buffer = screen.load_png(image_buffer)
+  end
+  
   -- Image buffer is of type userdata, which means it is a C object.
   -- But by searching around I found that getmetatable() returns a lua table
   -- that contains information about the C object.
@@ -104,8 +112,16 @@ screen.extents = function(image_buffer)
   -- And now can get pointer to the extents() function
   local extents_function = __index_subtable["extents"]
   
-  -- Now can just call the extents function on the image buffer and return the results
-  return extents_function(image_buffer)
+  -- Now can just call the extents function on the image buffer
+  local width, height = extents_function(image_buffer)
+  
+  -- Free temporary image buffer if file name was passed in
+  if file_name_provided then
+    screen.free(image_buffer)
+  end
+  
+  -- Return the results
+  return width, height
 end  
 
 
