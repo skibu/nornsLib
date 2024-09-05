@@ -8,10 +8,43 @@
 
 ------------------------------------------------------------------------------------------
 
+-- Get access to the PARAMS menu class
+local params_class = require "core/menu/params"
+
+
 local first_time_jumping_to_edit_params = true
 
--- This two functions need to be loaded everytime since it is a global function. Therefore
+-- These functions need to be loaded everytime since it is a global function. Therefore
 -- it is defined before the code that returns from this script if was read in before.
+
+-- So that app can have a "PSET >" toggle parameter in the parameter list that takes
+-- the user directly to the PSET page. This makes it easier for user to save/load/delete
+-- parameters.
+--
+-- To use, can setup the following parameter:
+--    params:add_separator("Store or load parameters")
+--    params:add_trigger("pset", "PSET >") 
+--    params:set_action("pset", jump_to_pset_screen )
+function jump_to_pset_screen()
+  util.debug_tprint("Jumping to parameter save/load/delete menu screen")
+  
+  -- Most likely already in menu mode, but explicitly change to it just to be safe 
+  _menu.set_mode(true) 
+  
+  -- Go to mSELECT screen of the PARAMS menu. Needed in case user was at another PARAMS 
+  -- screen, like mEDIT. Need to go to mSELECT instead of mPSET because need to use virtual
+  -- key press from the mSELECT screen in order to initialialize the mPSET screen. 
+  -- mSELECT is a local in lua/core/menu/params.lua so needs to be duplicated here.
+  local mSELECT = 0
+  params_class.mode = mSELECT
+  
+  -- Jump to PSET screen and make sure it has been initialized by calling 
+  -- core/menu/params.lua:init_pset(). Since this is a local function, the only 
+  -- way to do this is to do a virtual key3 press.
+  _menu.m.PARAMS.mode_pos = 2 -- select PSET 
+  _menu.m.PARAMS.key(3, 1)
+end
+
 
 -- Jumps from the application screen to the script's Params Edit screen so that user can 
 -- easily change app params. For when k1 pressed from within the script. Really nice
@@ -23,11 +56,8 @@ function jump_to_edit_params_screen()
   -- Change to menu mode 
   _menu.set_mode(true) 
 
-  -- Get access to the PARAMS menu class
-  local params_class = require "core/menu/params"
-
   -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
-  -- screen, like PSET. mEdit is a local in lua/core/menu/params.lua so needs to
+  -- screen, like PSET. mEDIT is a local in lua/core/menu/params.lua so needs to
   -- be duplicated here.
   local mEDIT = 1
   params_class.mode = mEDIT
