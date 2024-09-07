@@ -19,9 +19,10 @@ local te = require "textentry"
 
 
 -- The characters that user can select from. First one is backspace char, 0x08
-local backspace = "\u{0008}"
-te.available_chars = 
-  backspace.."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,-_=+#$%*<>"
+local backspace_key = "\u{0008}"
+local enter_key = "\u{000D}"
+te.available_chars = enter_key..backspace_key..
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,-_=+#$%*<>"
 
 
 -- Called whenever any key is pressed or released. For handling just special
@@ -43,7 +44,7 @@ local function keycode(c, value)
     end
      
     -- Highlight the backspace char
-    local new_pos = string.find(te.available_chars, backspace)
+    local new_pos = string.find(te.available_chars, backspace_key)
     if new_pos ~= nill then te.pos = new_pos end
     
     te.redraw()
@@ -90,7 +91,7 @@ te.enter = function(callback, default, heading, check)
   te.txt = default or ""
   te.initial_value = default or "" -- For if esc hit
   te.heading = heading or ""
-  te.pos = 2 -- Index of current char. Initially select the 2nd char, which is letter 'a'
+  te.pos = 3 -- Index of current char. Initially select the 2nd char, which is letter 'a'
   te.callback = callback
   te.check = check and check or standard_check
   te.warn = nil
@@ -174,12 +175,16 @@ te.key = function(n,z)
   if n==3 and z==1 then
     local ch = string.sub(te.available_chars, te.pos, te.pos)
     
-    if ch ~= backspace then
-      -- Append the new character
-      te.txt = te.txt .. ch
-    else
+    if ch == backspace_key then
       -- Backspace, so remove last character
       te.txt = string.sub(te.txt, 1, -2)
+    elseif ch == enter_key then
+      -- Enter key so done
+      te.exit()
+      return
+    else
+      -- Regular character so append simply append it
+      te.txt = te.txt .. ch
     end 
     
     -- Since the text has changed, redraw
@@ -257,6 +262,7 @@ te.redraw = function()
   screen.font_face(1) -- Standard Norns font
   screen.font_size(8)
   local index_of_selected = 5
+  local needed_extra_horiz_space = 0 -- For when outputing more than just single char
   for i=0, 15 do
     -- If selected character (the index_of_selected one) then highlight it with level 15. 
     -- Otherwise use level 3.
@@ -268,14 +274,19 @@ te.redraw = function()
       
     -- Draw the current character in the proper place. Each char gets 8 pixels width
     if char_index > 0 and char_index <= string.len(te.available_chars) then
-      screen.move(i*8, 48)
+      screen.move(i*8 + needed_extra_horiz_space, 48)
       local ch = string.sub(te.available_chars, char_index, char_index)
-      if ch ~= backspace then
-        -- Regular character so simply output it
-        screen.text(ch)
-      else
+      if ch == backspace_key then
         -- Special backspace character so show something special
         screen.text("<-")
+        needed_extra_horiz_space = needed_extra_horiz_space + 5
+      elseif ch == enter_key then
+        -- Enter key. Display as OK
+        screen.text("OK")
+        needed_extra_horiz_space = needed_extra_horiz_space + 7
+      else
+        -- Regular character so simply draw it
+        screen.text(ch)
       end
     end
   end
