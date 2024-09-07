@@ -18,39 +18,67 @@ local keyboard = require 'core/keyboard'
 local te = require "textentry"
 
 
--- Something to do with keyboard, but not sure what
+-- The characters that user can select from. First one is backspace char, 0x08
+local backspace = "\u{0008}"
+te.available_chars = 
+  backspace.."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,-_=+#$%*<>"
+
+
+-- Called whenever any key is pressed or released. For handling just special
+-- keys ESC, ENTER, and BACKSPACE.
 local function keycode(c, value)
+  util.dprint("In keycode() c="..c.." value="..value)
   if keyboard.state.ESC then
-    te.txt = nil
+    -- Restore text to original value and exit
+    te.txt = te.initial_value
     te.exit()
   elseif keyboard.state.ENTER then
+    -- Done, so exit
     te.exit()
   elseif keyboard.state.BACKSPACE then
-    te.row = 1
-    te.delok = 0
-    te.txt = string.sub(te.txt,0,-2)
+    -- Do the backspace
+    te.txt = string.sub(te.txt, 1, -2)
     if te.check then
       te.warn = te.check(te.txt)
     end
+     
+    -- Highlight the backspace char
+    local new_pos = string.find(te.available_chars, backspace)
+    if new_pos ~= nill then te.pos = new_pos end
+    
     te.redraw()
   end
 end
 
--- Not sure what this is for
+
+-- Called when regular character is typed
 local function keychar(a)
-  te.row = 0
-  te.pos = string.byte(a) - 5 - 32
+  util.dprint("In keychar() a="..a)
+  
+  -- Determine which position the char is at so that it will be highlighted
+  local new_pos = string.find(te.available_chars, a)
+  if new_pos ~= nill then te.pos = new_pos end
+
+  -- Add the new character
   te.txt = te.txt .. a
   if te.check then
     te.warn = te.check(te.txt)
   end
+  
   te.redraw()
 end
 
--- The characters that user can select from. First one is backspace char, 0x08
-local backspace = "\u{0008}"
-local available_chars = 
-  backspace.."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,-_=+#$%*<>"
+
+-- Used if no check() callback specified when te.enter() is called.
+-- Warning message returned if name is longer than 15 chars.
+local function standard_check(txt)
+  if string.len(txt) > 15 then
+    return "Name too long"
+  else
+    return nil
+  end
+end
+
 
 -- Called to setup and enter textentry screen.
 -- @param callback: function to be called when user finished editing text
@@ -58,12 +86,13 @@ local available_chars =
 -- @param heading: text to be displayed at top of screen to explain context
 -- @param check: function for takes in current text and returns a warning str if there is a problem
 te.enter = function(callback, default, heading, check)
-  util.debug_tprint("Using modified textentry. default="..default.." heading="..heading)
+  util.dprint("Using modified textentry. default="..default.." heading="..heading)
   te.txt = default or ""
+  te.initial_value = default or "" -- For if esc hit
   te.heading = heading or ""
   te.pos = 2 -- Index of current char. Initially select the 2nd char, which is letter 'a'
   te.callback = callback
-  te.check = check
+  te.check = check and check or standard_check
   te.warn = nil
   te_kbd_cb.code = keycode
   te_kbd_cb.char = keychar
@@ -143,7 +172,7 @@ te.key = function(n,z)
   
   -- If key3 pressed then add selected character to the string
   if n==3 and z==1 then
-    local ch = string.sub(available_chars, te.pos, te.pos)
+    local ch = string.sub(te.available_chars, te.pos, te.pos)
     
     if ch ~= backspace then
       -- Append the new character
@@ -169,7 +198,7 @@ te.enc = function(n,delta)
   
   -- Make sure not beyond the limits
   te.pos = math.max(te.pos, 1)
-  te.pos = math.min(te.pos, string.len(available_chars))
+  te.pos = math.min(te.pos, string.len(te.available_chars))
   
   -- Now that te.pos has been determined, redraw to update display
   te.redraw()
@@ -187,8 +216,8 @@ te.redraw = function()
   screen.level(5)
   screen.move(0,16)
   screen.text(te.heading)
-  
-  -- Draw the current text string
+
+  -- Draw the label  
   screen.font_face(1) -- Standard Norns font
   screen.font_size(8)
   screen.level(5)
@@ -196,23 +225,32 @@ te.redraw = function()
   local label = "Name: "
   screen.text(label)
   
+  -- Draw the current text string
   screen.font_face(5) -- Roboto Regular
   screen.aa(1)
-  screen.move(screen.text_untrimmed_extents(label), 32)
+  local label_width = screen.text_untrimmed_extents(label)
+  screen.move(label_width, 32)
   screen.font_size(11)
   screen.level(15)
   screen.text(te.txt)
   
-  -- If warning text specified then draw it on the right side
+  -- Draw cursor at end to show where text will be added
+  local text_width = screen.text_untrimmed_extents(te.txt)
+  screen.move(label_width + text_width, 32)
+  screen.level(2)
+  screen.text("_") -- The cursor
+  
+  -- If warning text specified then draw it below name being entered.
+  -- Nice that it isn't inline so that the name can take up more space.
   if te.check then
     te.warn = te.check(te.txt)
 	end
   if te.warn ~= nil then
     screen.font_face(1) -- Standard Norns font
     screen.font_size(8)
-    screen.level(7)
-    screen.move(128,32)
-    screen.text_right(te.warn)
+    screen.level(3)
+    screen.move(label_width, 39)
+    screen.text(te.warn)
   end
   
   -- Draw 16 of the characters that can be entered
@@ -226,12 +264,12 @@ te.redraw = function()
 
     -- Determine the index of the character in the string. te.pos indicates which is 
     -- the selected one
-    local char_index = te.pos + i - 4
+    local char_index = te.pos + i - index_of_selected
       
     -- Draw the current character in the proper place. Each char gets 8 pixels width
-    if char_index > 0 and char_index <= string.len(available_chars) then
-      screen.move(i*8, 46)
-      local ch = string.sub(available_chars, char_index, char_index)
+    if char_index > 0 and char_index <= string.len(te.available_chars) then
+      screen.move(i*8, 48)
+      local ch = string.sub(te.available_chars, char_index, char_index)
       if ch ~= backspace then
         -- Regular character so simply output it
         screen.text(ch)
