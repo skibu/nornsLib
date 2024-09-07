@@ -9,7 +9,7 @@
 ------------------------------------------------------------------------------------------
 
 -- Get access to the PARAMS menu class
-local params_class = require "core/menu/params"
+local params_menu = require "core/menu/params"
 
 
 local first_time_jumping_to_edit_params = true
@@ -36,7 +36,7 @@ function jump_to_pset_screen()
   -- key press from the mSELECT screen in order to initialialize the mPSET screen. 
   -- mSELECT is a local in lua/core/menu/params.lua so needs to be duplicated here.
   local mSELECT = 0
-  params_class.mode = mSELECT
+  params_menu.mode = mSELECT
   
   -- Jump to PSET screen and make sure it has been initialized by calling 
   -- core/menu/params.lua:init_pset(). Since this is a local function, the only 
@@ -60,7 +60,7 @@ function jump_to_edit_params_screen()
   -- screen, like PSET. mEDIT is a local in lua/core/menu/params.lua so needs to
   -- be duplicated here.
   local mEDIT = 1
-  params_class.mode = mEDIT
+  params_menu.mode = mEDIT
 
   -- tSEPARATOR and tTEXT are locals in paramset.lua so get them from metatable
   local params_metatable = getmetatable(params)
@@ -73,10 +73,10 @@ function jump_to_edit_params_screen()
   if first_time_jumping_to_edit_params then
     first_time_jumping_to_edit_params = false
     
-    params_class.pos = 0 -- For if don't find appropriate one
+    params_menu.pos = 0 -- For if don't find appropriate one
     for idx=1,#params.params do
       if params:visible(idx) and params:t(idx) ~= tSEPARATOR and params:t(idx) ~= tTEXT then
-        params_class.pos = idx - 1 -- oddly the index for parameters is zero based
+        params_menu.pos = idx - 1 -- oddly the index for parameters is zero based
         break
       end
     end
@@ -86,7 +86,7 @@ function jump_to_edit_params_screen()
   _menu.set_page("PARAMS")
 
   -- Initialize the params page in case haven't done so previously
-  params_class.init()
+  params_menu.init()
 end
 
 ---------------------------------------------------------------------------------------------
@@ -178,16 +178,17 @@ local function output_value_without_overlap(value_str, label_str)
 end
 
       
+----------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 -- Make sure this file only loaded once. This prevents infinite recursion when 
 -- overriding system functions. Bit complicated because need to use something
 -- that lasts across script restarts. The solution is to use add a boolean to
 -- the object whose function is getting overloaded.
 
--- The menu that contains the params. This is the one that needs to have function
--- ptrs modified. So this is where should store the already_included boolean.
-local params_menu = require "core/menu/params"
+-- params_menu is the menu that contains the params. This is the one that needs to have 
+-- function ptrs modified. So this is where should store the already_included boolean.
 
 -- If the special variable already set then return and don't process this file further
 if params_menu["already_included"] ~= nil then 
@@ -277,7 +278,7 @@ t.event = function(_)
 end
 
 
--- Overriding the key() function in lua/core/menu.lua
+-- Overriding the key() function in lua/core/menu.lua to better handle key1 inputs.
 _norns.key = function(n, z)
   -- key 1 detect for short press
   if n == 1 then
