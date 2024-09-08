@@ -8,43 +8,23 @@
 
 ------------------------------------------------------------------------------------------
 
--- Get access to the PARAMS menu class
+-- Get access to the PARAMS menu class. 
 local params_menu = require "core/menu/params"
 
+------------------------------------------------------------------------------------------
+------------- Local functions that had to be copied from core/menu/params.lua ------------
+------------------------------------------------------------------------------------------
 
-local first_time_jumping_to_edit_params = true
+-- mEDIT is a local in lua/core/menu/params.lua so needs to be duplicated here
+local mEDIT = 1
 
+  
+---------------------------------------------------------------------------------------  
 -- These functions need to be loaded everytime since it is a global function. Therefore
 -- it is defined before the code that returns from this script if was read in before.
+-------------------------------------------------------------------------------------
 
--- So that app can have a "PSET >" toggle parameter in the parameter list that takes
--- the user directly to the PSET page. This makes it easier for user to save/load/delete
--- parameters.
---
--- To use, can setup the following parameter:
---    params:add_separator("Store or load parameters")
---    params:add_trigger("pset", "PSET >") 
---    params:set_action("pset", jump_to_pset_screen )
-function jump_to_pset_screen()
-  util.debug_tprint("Jumping to parameter save/load/delete menu screen")
-  
-  -- Most likely already in menu mode, but explicitly change to it just to be safe 
-  _menu.set_mode(true) 
-  
-  -- Go to mSELECT screen of the PARAMS menu. Needed in case user was at another PARAMS 
-  -- screen, like mEDIT. Need to go to mSELECT instead of mPSET because need to use virtual
-  -- key press from the mSELECT screen in order to initialialize the mPSET screen. 
-  -- mSELECT is a local in lua/core/menu/params.lua so needs to be duplicated here.
-  local mSELECT = 0
-  params_menu.mode = mSELECT
-  
-  -- Jump to PSET screen and make sure it has been initialized by calling 
-  -- core/menu/params.lua:init_pset(). Since this is a local function, the only 
-  -- way to do this is to do a virtual key3 press.
-  _menu.m.PARAMS.mode_pos = 2 -- select PSET 
-  _menu.m.PARAMS.key(3, 1)
-end
-
+local first_time_jumping_to_edit_params = true
 
 -- Jumps from the application screen to the script's Params Edit screen so that user can 
 -- easily change app params. For when k1 pressed from within the script. Really nice
@@ -56,10 +36,12 @@ function jump_to_edit_params_screen()
   -- Change to menu mode 
   _menu.set_mode(true) 
 
+  -- Remember current mode so that can return to it if k2 pressed
+  params_menu.mode_prev = params_menu.mode
+  util.dprint("==== set params_menu.mode_prev to "..params_menu.mode_prev)
+
   -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
-  -- screen, like PSET. mEDIT is a local in lua/core/menu/params.lua so needs to
-  -- be duplicated here.
-  local mEDIT = 1
+  -- screen, like PSET.
   params_menu.mode = mEDIT
 
   -- tSEPARATOR and tTEXT are locals in paramset.lua so get them from metatable
@@ -89,7 +71,9 @@ function jump_to_edit_params_screen()
   params_menu.init()
 end
 
----------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------  
+------------------ Helper functions for preventing overlapping text--------------------
+---------------------------------------------------------------------------------------  
 
 -- An option for specifying a function that can shorten the string when it is too long.
 -- This function will only be called when a parameter value is too long to fit without
@@ -179,11 +163,11 @@ end
 
       
 ----------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------
 
--- Make sure this file only loaded once. This prevents infinite recursion when 
--- overriding system functions. Bit complicated because need to use something
+-- Make sure this part of the file only loaded once. This prevents infinite recursion 
+-- when overriding system functions. Bit complicated because need to use something
 -- that lasts across script restarts. The solution is to use add a boolean to
 -- the object whose function is getting overloaded.
 
@@ -192,13 +176,13 @@ end
 
 -- If the special variable already set then return and don't process this file further
 if params_menu["already_included"] ~= nil then 
-  print("parameterExtensions.lua already included so not doing so again")
+  print("parameterExt.lua already included so not doing so again")
   return 
 end
   
 -- Need to process this file
 params_menu["already_included"] = true
-print("parameterExtensions.lua not yet loaded so loading now...")
+print("parameterExt.lua not yet loaded so loading now...")
 
 ----------------------------------------------------------------------------------
 ------------------------- Make sure selector text doesn't overlap ----------------
@@ -211,6 +195,32 @@ include "nornsLib/screenExt"
 local original_redraw_function = params_menu.redraw
 local possible_label
 
+-- For keeping track of original text() and text_right() functions so they can be called
+local original_text_func
+local original_text_right_func
+
+-- So can temporarily switch to using special screen.text() function that stores the last
+-- text written using screen.text(value)
+local function special_screen_text(value)
+  possible_label = value
+  original_text_func(value)
+end
+  
+-- If the value and label are short such that there could not be overlap 
+-- then just use original simple text_right() function 
+local function special_screen_text_right(value)
+  if value ~= nill and possible_label ~= nil and 
+      string.len(value) + string.len(possible_label) < 24 and 
+      not _left_align then
+    original_text_right_func(value)
+  else
+    -- Either need to left align value or longish labels so make sure they don't overlap
+    output_value_without_overlap(value, possible_label)
+  end
+end
+
+
+
 -- The new redraw() function. Temporarily switches to using special screen.text() 
 -- and screen.text_right() functions that allow output_value_without_overlap() to
 -- be called instead of screen.text_right. This way can make sure that the option
@@ -218,28 +228,14 @@ local possible_label
 params_menu.redraw = function()
   -- Temporarily switch to using special screen.text() function that stores the last
   -- text written using screen.text(str)
-  local original_text_func = screen.text
-  screen.text = function(str)
-    possible_label = str
-    original_text_func(str)
-  end
+  original_text_func = screen.text
+  screen.text = special_screen_text
   
   -- Temporarily switch to using special screen.text_right() function that if text too
   -- wide it draws it smaller so that it won't overlap with the label text written to
   -- the left.
-  local original_text_right_func = screen.text_right
-  screen.text_right = function(value) 
-    -- If the value and label are short such that there could not be overlap 
-    -- then just use original simple text_right() function 
-    if value ~= nill and possible_label ~= nil and 
-        string.len(value) + string.len(possible_label) < 24 and 
-        not _left_align then
-      original_text_right_func(value)
-    else
-      -- Either need to left align value or longish labels so make sure they don't overlap
-      output_value_without_overlap(value, possible_label)
-    end
-  end
+  original_text_right_func = screen.text_right
+  screen.text_right = special_screen_text_right
 
   -- Call the original redraw function, which will in turn use the temporary 
   -- screen.text() and screen.text_right() functions
@@ -280,6 +276,7 @@ end
 
 -- Overriding the key() function in lua/core/menu.lua to better handle key1 inputs.
 _norns.key = function(n, z)
+  util.dprint("In overriden _norns.key() and n="..n.. " z="..z)
   -- key 1 detect for short press
   if n == 1 then
     if z == 1 then
