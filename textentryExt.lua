@@ -91,7 +91,8 @@ te.enter = function(callback, default, heading, check)
   te.txt = default or ""
   te.initial_value = default or "" -- For if esc hit
   te.heading = heading or ""
-  te.pos = 3 -- Index of current char. Initially select the 2nd char, which is letter 'a'
+  -- Index of current char. Initially select the OK button so can easily store by hitting key3
+  te.pos = 1 
   te.callback = callback
   te.check = check and check or standard_check
   te.warn = nil
@@ -281,9 +282,9 @@ te.redraw = function()
         screen.text("<-")
         needed_extra_horiz_space = needed_extra_horiz_space + 5
       elseif ch == enter_key then
-        -- Enter key. Display as OK
-        screen.text("OK")
-        needed_extra_horiz_space = needed_extra_horiz_space + 7
+        -- Enter key. Display as SAVE
+        screen.text("SAVE")
+        needed_extra_horiz_space = needed_extra_horiz_space + 14
       else
         -- Regular character so simply draw it
         screen.text(ch)
@@ -295,7 +296,7 @@ te.redraw = function()
   screen.font_face(1) -- Standard Norns font
   screen.level(2)
   screen.move(0, 64)
-  screen.text("k3 to add char, k2 when done")
+  screen.text("Use k3 to SAVE or add char")
   
   screen.update()
 end
