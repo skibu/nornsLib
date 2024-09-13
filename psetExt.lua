@@ -261,11 +261,11 @@ end
 -- parameters.
 --
 -- To use, can setup the following parameter:
---    params:add_separator("Store or load parameters")
+--    params:add_separator("Save or load presets")
 --    params:add_trigger("pset", "PSET >") 
 --    params:set_action("pset", jump_to_pset_screen )
 function jump_to_pset_screen()
-  util.debug_tprint("Jumping to parameter save/load/delete Pmenu screen")
+  util.debug_tprint("Jumping to parameter save/load/delete menu screen")
   
   -- Most likely already in menu mode, but explicitly change to it just to be safe 
   _menu.set_mode(true) 
@@ -319,7 +319,6 @@ params_menu.redraw = function()
   end
   
   -- Was not a special PSET menu request so call the original redraw
-  --FIXME util.dprint("In psetExt params_menu.redraw() but calling orig redraw()")
   original_params_menu_redraw_func()
 end
 
@@ -384,11 +383,19 @@ params_menu.key = function(n, z)
           util.dprint("K3 hit for Delete option so going to PSETDELETE menu screen")
           params_menu.mode = mPSETDELETE
         end
+
       end
       m.redraw()
       return
     end -- of n==3
   else  
+    -- The original key() function doesn't set mode_prev. Therefore set it here
+    -- so that if changing to another menu will know where came from.
+    if params_menu.mode == mSELECT then
+      params_menu.mode_prev = params_menu.mode
+      util.dprint("In psetExt.key() and setting params_menu.mode_prev to "..params_menu.mode_prev)
+    end
+    
     -- Do not need to handle specially so just call the original key function
     util.dprint("Calling original menu key function")
     original_params_menu_key_func(n, z)
