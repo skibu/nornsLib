@@ -140,12 +140,14 @@ te.exit = function()
 
   -- Restore the key, enc, redraw, and refresh functions
   if norns.menu.status() == false then
+    -- Was in the app (not in a menu) so manually restore the functions
     key = te.key_restore
     enc = te.enc_restore
     redraw = te.redraw_restore
     refresh = te.refresh_restore
     norns.menu.init()
   else
+    -- Was in a menu so use menu.set() to restare the functions
     norns.menu.set(te.enc_restore, te.key_restore, te.redraw_restore, te.refresh_restore)
   end
   
