@@ -71,6 +71,25 @@ function jump_to_edit_params_screen()
   params_menu.init()
 end
 
+---------------------------------------------------------------------------------------
+----------------------------- fix for ParamSet:bang() --------------------------------
+---------------------------------------------------------------------------------------
+
+-- Turns out that in lua/core/clock.lua that params:bang("clock_tempo") is called to
+-- bang just the single parameter. But the standard bang() function bangs *ALL* 
+-- parameters, which is not desired. So this definition overrides the bang function
+-- so that only a single param can be banged. If id not specified then all all banged.
+function params:bang(id)
+  util.dprint("doing ParamSet:bang() for param id="..tostring(id))
+  for _,v in pairs(self.params) do
+    if (id == nil or id == v.id) and v.t ~= self.tTRIGGER and 
+       not (v.t == self.tBINARY and v.behavior == 'trigger' and v.value == 0) then
+      v:bang()
+    end
+  end
+end
+
+
 ---------------------------------------------------------------------------------------  
 ------------------ Helper functions for preventing overlapping text--------------------
 ---------------------------------------------------------------------------------------  
@@ -183,6 +202,7 @@ end
 -- Need to process this file
 params_menu["already_included"] = true
 print("parameterExt.lua not yet loaded so loading now...")
+
 
 ----------------------------------------------------------------------------------
 ------------------------- Make sure selector text doesn't overlap ----------------
