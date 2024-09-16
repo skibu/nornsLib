@@ -60,6 +60,13 @@ function key(n, down)
   ...
 end
 ```
+### Fixed params:bang(id) to handle single parameter
+Turns out that in lua/core/clock.lua that params:bang("clock_tempo") is called to
+bang just the single parameter. But the standard bang() function bangs *ALL* 
+parameters, which is not desired in this situation. So this definition overrides the 
+bang function so that optionally only a single param can be banged. If id not specified 
+then all all banged.
+
 
 ## `include "nornsLib/screenExt"`
 The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
