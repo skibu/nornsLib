@@ -94,13 +94,6 @@ And lastly, screen.clear() is overriden to deal with a bug when writing an image
 
 ## `include "nornsLib/utilExt"`
 
-### util.execute_command(command)
-Like os.execute() but returns the result string from the command. And different
-from util.os_capture() by having a more clear name, and by only filtering out
-last character if a newline. This means it works well for both shell commands
-like 'date' and also accessing APIs that can provide binary data, such as using
-curl to get an binary file.
-
 ### util.sleep(seconds)
 Sleeps specified fraction number of seconds. Implemented by doing a system call.
 Note that this will lock out the UI for the specified amount of time, so should
@@ -121,14 +114,6 @@ and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
 are just truncated instead of rounded because that level of precision is not
 actually useful for print statements.
 
-### util.debug_tprint(obj)
-Like util.tprint(obj), but only prints the timestamped message if debug_mode global 
-is set to true. Great for debugging.
-
-### util.debug_print(obj)
-Like print(), but only does the print if debug_mode global set to true. Useful 
-for debugging.
-
 ### util.get_filename(full_filename)
 For getting just the filename from full directory path. Returns what is after
 the last slash of the full filename. If full filename doesn't have any slashes
@@ -148,6 +133,30 @@ For encoding a url that has special characters.
 
 ### util.urldecode(url)
 For decoding a url with special characters
+
+### util.execute_command(command)
+Like os.execute() but returns the result string from the command. And different
+from util.os_capture() by having a more clear name, and by only filtering out
+last character if a newline. This means it works well for both shell commands
+like 'date' and also accessing APIs that can provide binary data, such as using
+curl to get an binary file.
+
+## `include "nornsLib/debugExt"`
+For debug logging statements that can be turned on or off, and contain useful debugging info such as function name, source code, and line number where called from. This is like a consdensed traceback.
+
+### debug.enable_print(value) 
+This function needs to be called if want debug.print() functions to actually output
+info. To enable, call debug.enable_print(true) or simply debug.enable_print(). To
+disable use debug.enable_print(false).
+
+### debug.tprint(obj)
+Like util.tprint(obj), but only prints the timestamped message if debug enabled. Great for debugging.
+
+### debug.log(obj)
+An alternative and simpler name for debug.tprint(obj).
+
+### debug.print(obj)
+Like print(), but only does the print if debug enabled. Does not include timestamp. Useful for debugging.
 
 # Using NornsLib in your script
 The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
