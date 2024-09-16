@@ -1,5 +1,6 @@
 -- Includes all extensions
 
+require("nornsLib/debugExt")
 include("nornsLib/utilExt")
 include("nornsLib/screenExt")
 include("nornsLib/parameterExt")

@@ -5,6 +5,9 @@
 local params_menu = require "core/menu/params"
 local m = params_menu
 
+-- For debug logging
+require "nornsLib/debugExt"
+
 local textentry = require "textentry"
 
 ------------------------------------------------------------------------------------------
@@ -61,7 +64,7 @@ end
 -- it is a local there and it sets the pset local. This function is not made local
 -- here so that it can be accessed by parameterExt.lua
 local function init_pset()
-  util.dprint("psetExt scanning all psets...")
+  debug.log("psetExt scanning all psets...")
   norns.system_cmd('ls -1 '..norns.state.data..norns.state.shortname..'*.pset | sort', 
     pset_list)
 end
@@ -88,7 +91,7 @@ end
 -- params:read(norns.state.pset_last) or simply params:read() or simplest 
 -- params:default() to do that.
 local function write_pset_last(ps_pos)
-  util.dprint("In write_pset_last() and ps_pos="..ps_pos)
+  debug.log("In write_pset_last() and ps_pos="..ps_pos)
   local file = norns.state.data.."pset-last.txt"
   local f = io.open(file,"w")
   io.output(f)
@@ -104,7 +107,7 @@ local pset_save_redraw
 -- Writes the specified param set, and also writes it as the last one. Called
 -- when user finishes with the textentry window.
 local function write_pset(name)
-  util.dprint("In write_pset() and name="..name.." and m.ps_pos="..m.ps_pos)
+  debug.log("In write_pset() and name="..name.." and m.ps_pos="..m.ps_pos)
   -- FIXME is this check on name really needed? Ever nil?
   if name then
     if name == "" then name = params.name end
@@ -123,7 +126,7 @@ end
 -- This function didn't exist in params.lua but it should have
 local function load_pset(ps_pos)
   if ps_pos <= #m.pset then
-    util.dprint("Loading param set #"..ps_pos)
+    debug.log("Loading param set #"..ps_pos)
     params:read(ps_pos)
     m.ps_last = ps_pos
     write_pset_last(ps_pos) -- save last pset loaded
@@ -265,14 +268,14 @@ end
 --    params:add_trigger("pset", "PSET >") 
 --    params:set_action("pset", jump_to_pset_screen )
 function jump_to_pset_screen()
-  util.debug_tprint("Jumping to parameter save/load/delete menu screen")
+  debug.log("Jumping to parameter save/load/delete menu screen")
   
   -- Most likely already in menu mode, but explicitly change to it just to be safe 
   _menu.set_mode(true) 
   
   -- Remember current mode so that can return to it if k2 pressed
   params_menu.mode_prev = params_menu.mode
-  util.dprint("FIXME set params_menu.mode_prev to "..params_menu.mode_prev..
+  debug.log("FIXME set params_menu.mode_prev to "..params_menu.mode_prev..
     " where mSELECT="..mSELECT.." mEDIT="..mEDIT.." mPSET="..mPSET)
   
   -- Since had to have a local version of init_pset(), can call it directly. This 
@@ -327,9 +330,9 @@ local original_params_menu_key_func = params_menu.key
 
 params_menu.key = function(n, z)
   if z == 1 then
-    util.dprint("In modified params_menu.key and n="..n.." z="..z)
+    debug.log("In modified params_menu.key and n="..n.." z="..z)
     --json.print(_menu.m.PARAMS)
-    util.dprint("m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
+    debug.log("m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
       " m.pos="..m.pos)
   end
   
@@ -343,16 +346,16 @@ params_menu.key = function(n, z)
       -- key2 means go back to previous menu screen
       if params_menu.mode == mPSETDELETE then
         -- Go back to PSET menu without actually deleting
-        util.dprint("Going back to mPSET screen")
+        debug.log("Going back to mPSET screen")
         params_menu.mode = mPSET
       else
         if params_menu.mode_prev == mEDIT then
           -- Go back to the edit params page
-          util.dprint("Going back to mEDIT screen")
+          debug.log("Going back to mEDIT screen")
           params_menu.mode = mEDIT
         else
           -- Go back to the parameters mSELECT menu page
-          util.dprint("Going back to mSELECT screen")
+          debug.log("Going back to mSELECT screen")
           params_menu.mode = mSELECT
         end
       end
@@ -370,17 +373,17 @@ params_menu.key = function(n, z)
         -- ps_action is which command selected in PSET menu: SAVE, LOAD, or DELETE
         if params_menu.ps_action == 1 then
           -- SAVE action
-          util.dprint("K3 hit for Save & Name option")
+          debug.log("K3 hit for Save & Name option")
           local initial_name = m.ps_pos <= #m.pset and m.pset[m.ps_pos].name or ""
           textentry.enter(write_pset, initial_name, "Name PSET #"..m.ps_pos.." and Save")
         elseif params_menu.ps_action == 2 and m.ps_pos <= #m.pset then
           -- LOAD action
-          util.dprint("K3 hit for Load option")
+          debug.log("K3 hit for Load option")
           load_pset(m.ps_pos)
           pset_load_redraw()
         elseif params_menu.ps_action == 3 and m.ps_pos <= #m.pset then
           -- DELETE action
-          util.dprint("K3 hit for Delete option so going to PSETDELETE menu screen")
+          debug.log("K3 hit for Delete option so going to PSETDELETE menu screen")
           params_menu.mode = mPSETDELETE
         end
 
@@ -393,11 +396,11 @@ params_menu.key = function(n, z)
     -- so that if changing to another menu will know where came from.
     if params_menu.mode == mSELECT then
       params_menu.mode_prev = params_menu.mode
-      util.dprint("In psetExt.key() and setting params_menu.mode_prev to "..params_menu.mode_prev)
+      debug.log("In psetExt.key() and setting params_menu.mode_prev to "..params_menu.mode_prev)
     end
     
     -- Do not need to handle specially so just call the original key function
-    util.dprint("Calling original menu key function")
+    debug.log("Calling original menu key function")
     original_params_menu_key_func(n, z)
   end
 end  

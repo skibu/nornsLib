@@ -11,6 +11,9 @@
 -- Get access to the PARAMS menu class. 
 local params_menu = require "core/menu/params"
 
+-- For debug logging
+require "nornsLib/debugExt"
+
 ------------------------------------------------------------------------------------------
 ------------- Local functions that had to be copied from core/menu/params.lua ------------
 ------------------------------------------------------------------------------------------
@@ -31,14 +34,14 @@ local first_time_jumping_to_edit_params = true
 -- feature since it makes param changes easier. This function should be called in the
 -- script's key() method for key1 is released. 
 function jump_to_edit_params_screen()
-  util.debug_tprint("Jumping to parameter menu screen")
+  debug.log("Jumping to parameter menu screen")
   
   -- Change to menu mode 
   _menu.set_mode(true) 
 
   -- Remember current mode so that can return to it if k2 pressed
   params_menu.mode_prev = params_menu.mode
-  util.dprint("==== set params_menu.mode_prev to "..params_menu.mode_prev)
+  debug.log("==== set params_menu.mode_prev to "..params_menu.mode_prev)
 
   -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
   -- screen, like PSET.
@@ -80,7 +83,7 @@ end
 -- parameters, which is not desired. So this definition overrides the bang function
 -- so that only a single param can be banged. If id not specified then all all banged.
 function params:bang(id)
-  util.dprint("doing ParamSet:bang() for param id="..tostring(id))
+  debug.log("doing ParamSet:bang() for param id="..tostring(id))
   for _,v in pairs(self.params) do
     if (id == nil or id == v.id) and v.t ~= self.tTRIGGER and 
        not (v.t == self.tBINARY and v.behavior == 'trigger' and v.value == 0) then
@@ -296,7 +299,7 @@ end
 
 -- Overriding the key() function in lua/core/menu.lua to better handle key1 inputs.
 _norns.key = function(n, z)
-  util.dprint("In overriden _norns.key() and n="..n.. " z="..z)
+  debug.log("In overriden _norns.key() and n="..n.. " z="..z)
   -- key 1 detect for short press
   if n == 1 then
     if z == 1 then

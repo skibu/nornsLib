@@ -1,5 +1,7 @@
 -- Miscellaneous utility extensions. All functions are put into the util object.
 
+-- For debug logging
+require "nornsLib/debugExt"
 
 -- Like os.execute() but returns the result string from the command. And different
 -- from util.os_capture() by having a more clear name, and by only filtering out
@@ -47,57 +49,6 @@ function util.tprint(obj)
   time_str = string.format("%.4f", util.time() % 10000)
   
   print(time_str .. " - " .. tostring(obj))
-end
-
-
--- Provides context of when the debug print statement was called
-local function debug_line(called_by_print)
-  -- Number of levels that need to go up when calling debug.getinfo() depends
-  -- on whether an extra layer of print() functions used.
-  local levels_up = called_by_print == nil and 3 or 4
-  
-  local debug_info = debug.getinfo(levels_up, "Sln")
-  
-  local function_name = debug_info.name
-  if function_name ~= nil then 
-    function_name = function_name .. "() "
-  else  
-    function_name = "" 
-  end
-  
-  return "DEBUG " .. function_name .. util.get_filename(debug_info.short_src) ..
-    " line:"..debug_info.currentline
-end
-
-
--- Does a util.tprint(), but only if the global debug_mode is set to true.
--- Great for debugging. Parameter called_by_print should be set to non nil 
--- if this function was called by another util.print() function. This is
--- needed so that the proper function will be displayed in the message.
-function util.debug_tprint(obj, called_by_print)
-  -- Don't do anything if not in debug mode
-  if debug_mode ~= true then return end
-    
-  -- Output the info  
-  util.tprint(debug_line(called_by_print).."\n            "..obj)
-end
-
-
--- Since util.debug_tprint(obj) is so useful here is a shorter name for it
-function util.dprint(obj)
-  -- Note: setting called_by_print to true since calling an extra layer of print function
-  util.debug_tprint(obj, true)
-end
-
-
--- Does a regular print(), but only if the global debug_mode is set to true.
--- Great for debugging.
-function util.debug_print(obj)
-  -- Don't do anything if not in debug mode
-  if debug_mode ~= true then return end
-    
-  -- Output the info  
-  print(debug_line().."\n"..obj)
 end
 
 
@@ -218,13 +169,13 @@ local function _wait_for_file_callback(stage, mtro)
       mtro._file_available_callback(filename)
     else
       -- File still changing size so not ready yet
-      util.debug_tprint("File still changing size so waiting. ".. util.get_filename(filename) .." size=" .. current_size) 
+      debug.log("File still changing size so waiting. ".. util.get_filename(filename) .." size=" .. current_size) 
       mtro._prev_file_size = current_size
     end
   else
     -- File doesn't even exist yet
     mtro._prev_file_size = 0
-    --util.debug_tprint("Waiting for file to exist ".. util.get_filename(filename)) 
+    --debug.log("Waiting for file to exist ".. util.get_filename(filename)) 
   end
   
   -- If exceeded allowable counts then give up. Free the timer
@@ -242,7 +193,7 @@ end
 function util.wait(full_filename, file_available_callback, tick_time, max_time)
   -- If file already exists and is not empty then call the callback immediately
   if util.file_exists(full_filename) and util.file_size(full_filename) > 0 then
-    util.debug_tprint("File already available so calling callback. file="..full_filename)
+    debug.log("File already available so calling callback. file="..full_filename)
     file_available_callback(full_filename)
     return
   end
