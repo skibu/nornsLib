@@ -1,5 +1,7 @@
 -- For making the PSET menu screen easier to use. 
 
+print("Loading nornsLib/psetExt.lua")
+
 -- load the nornsLib  mod to setup system hooks
 local nornsLib = require "nornsLib/nornsLib"
 

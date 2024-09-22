@@ -8,6 +8,8 @@
 
 ------------------------------------------------------------------------------------------
 
+print("Loading nornsLib/parameterExt.lua")
+
 -- load the nornsLib  mod to setup system hooks
 local nornsLib = require "nornsLib/nornsLib"
 

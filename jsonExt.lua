@@ -23,6 +23,8 @@
 -- SOFTWARE.
 --
 
+print("Loading nornsLib/jsonnExt.lua")
+
 local json = { _version = "0.1.3" }
 
 -------------------------------------------------------------------------------

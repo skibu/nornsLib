@@ -1,5 +1,7 @@
 -- Extension to augment the Norns Screen functions
 
+print("Loading nornsLib/screenExt.lua")
+
 -- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
 -- the proper width of a string if the string is padded by spaces. Somewhere the string
 -- is inappropriately trimmed. This is a problem even if padding with a half space \u{2009}

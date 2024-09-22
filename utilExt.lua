@@ -1,5 +1,7 @@
 -- Miscellaneous utility extensions. All functions are put into the util object.
 
+print("Loading nornsLib/utilExt.lua")
+
 -- For logging
 local log = require "nornsLib/loggingExt"
 

@@ -1,5 +1,7 @@
 -- The common code for the NornsLib library
 
+print("Loading nornsLib/nornsLib.lua")
+
 -- Put everything in the NornsLib namespace
 local NornsLib = {
   scripts_enabled_for_list = {}
