@@ -3,7 +3,7 @@ Useful Lua libraries for Norns synth to make it easier to create scripts that ar
 
 See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
 
-## `json = include "nornsLib/jsonExt"`
+## `json = require "nornsLib/jsonExt"`
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
 ### json_str = json.encode(tbl, indent)
@@ -74,7 +74,7 @@ bang function so that optionally only a single param can be banged. If id not sp
 then all all banged.
 
 
-## `include "nornsLib/screenExt"`
+## `require "nornsLib/screenExt"`
 The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
 
 All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
@@ -105,7 +105,7 @@ And there is a function for freeing an image buffer when you are done with it. M
 And lastly, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
 * screen.clear() - fixes existing function
 
-## `include "nornsLib/utilExt"`
+## `require "nornsLib/utilExt"`
 
 ### util.sleep(seconds)
 Sleeps specified fraction number of seconds. Implemented by doing a system call.
