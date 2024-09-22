@@ -74,8 +74,13 @@ bang function so that optionally only a single param can be banged. If id not sp
 then all all banged.
 
 
-# `psetExt = require "nornsLib/psetExt"`
-The original PSET menu screen has a different UI than other situations.  The list of presets is simply not clear. Therefore the presets are provided in a single line, as is done with other parameters. Also, switched from using upper case.
+# `psetExt = require "nornsLib/psetExt"` (presets screen)
+The original PSET (Presets) menu screen has a different UI than other situations.  The list of presets is simply not clear. And "pset" is a really confusing term since it stands for "preset", not "parameter set". Therefore with psetExt the presets are provided in a single line, as is done with other parameters. Also, switched from using upper case. 
+
+But a truly nice feature is that the parameters menu can be setup so that the user can jump directly from that screen to the preset page.
+
+### `psetExt.jump_to_pset_screen()`
+When setting up the script's parameters can use something like `params:set_action("pset", psetExt.jump_to_pset_screen )` to allow the user to jump directly to the preset screen, making navigation much more simple.
 
 
 # `require "nornsLib/textentryExt"`
