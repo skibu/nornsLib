@@ -9,7 +9,9 @@
 --  log = require "nornsLib/loggingExt"
 
 
--- load the nornsLib  mod to setup system hooks
+print("Loading nornsLib/loggingExt.lua")
+
+-- load the nornsLib mod to setup system hooks
 local nornsLib = require "nornsLib/nornsLib"
 
 local LoggingExt = {
@@ -53,6 +55,7 @@ end
 -- The parameter called_by_print will usually be nil to indicate that the
 -- print statement was called directly. But if the print statement was called
 -- by another print statement then should pass in an object such as true. 
+-- Returns string containing debug context.
 local function debugging_info(called_by_print)
   -- Number of levels that need to go up when calling log.getinfo() depends
   -- on whether an extra layer of print() functions used.
@@ -60,6 +63,9 @@ local function debugging_info(called_by_print)
 
   local debug_info = debug.getinfo(levels_up, "Sln")
 
+  -- debug_info can be null if used in REPL. Therefore handle that case.
+  if debug_info == nil then return "" end
+    
   local function_name = debug_info.name
   if function_name ~= nil then
     function_name = function_name .. "() "
@@ -83,6 +89,11 @@ function LoggingExt.debug(obj, called_by_print)
   -- Output the info
   LoggingExt.print("DEBUG: " .. tostring(obj)..
     "\n            "..debugging_info(called_by_print))
+
+  -- Debug statements are important and it doesn't matter if they are a bit slow. 
+  -- They are for debugging! Therefore worthwhile to flush logfile so that user
+  -- will definitely see the error.
+  LoggingExt.flush_logfile()
 end
 
 
@@ -91,6 +102,10 @@ function LoggingExt.error(obj, called_by_print)
   -- Output the info
   LoggingExt.print("ERROR: " .. tostring(obj)..
     "\n            "..debugging_info(called_by_print))
+  
+  -- Errors are rare but important. Therefore worthwhile to flush logfile so that user
+  -- will definitely see the error.
+  LoggingExt.flush_logfile()
 end
 
 
