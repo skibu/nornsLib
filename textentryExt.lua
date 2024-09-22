@@ -12,6 +12,10 @@
 ---
 --- This code works by substituting in new functions for the textentry te object.
 
+print("Loading nornsLib/textentryExt.lua")
+
+-- load the nornsLib mod to setup system hooks
+local nornsLib = require "nornsLib/nornsLib"
 
 -- For logging
 local log = require "nornsLib/loggingExt"
@@ -311,7 +315,10 @@ end
 
 -- This function will be called before init() is done via magic of hooks.
 -- Stores original function pointers and switches to use the modified functions.
-local function _initialize_textentry()
+local function initialize_textentry()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
   te._original_redraw_function = te.redraw
   te.redraw = modified_redraw_function
   
@@ -331,7 +338,10 @@ end
 
 -- Will be called by script_post_cleanup hook when script is being shut down.
 -- Restores the textentry functions to their originals
-local function _finalize_textentry()
+local function finalize_textentry()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
   te.redraw = te._original_redraw_function
   
   te.enc = te._original_enc_function
@@ -348,6 +358,6 @@ end
 -- code before init() and then to reset the code while doing cleanup.
 local hooks = require 'core/hook'
 hooks["script_pre_init"]:register("pre init for NornsLib textentry extension", 
-  _initialize_textentry)
+  initialize_textentry)
 hooks["script_post_cleanup"]:register("post cleanup for NornsLib textentry extension",
-  _finalize_textentry)
+  finalize_textentry)
