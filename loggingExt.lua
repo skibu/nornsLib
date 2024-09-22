@@ -161,6 +161,10 @@ local function _finalize_logger()
   
   -- Restore the original print() function
   print = LoggingExt.original_print_function
+  
+  -- Turn off debugging in case it was on. This way other apps won't display 
+  -- debugging messages from the nornsLib.
+  LoggingExt.enable_debug(false)
 end
 
 
