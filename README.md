@@ -29,7 +29,7 @@ data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
 ## `include "nornsLib/parameterExt"`
-The parameter extensions library does two main things: 1) prevents overlap for option parameters; and 2) makes navigation to parameter setting menu much simpler.
+The parameter extensions library does several things: 1) prevents overlap for option parameters;  2) makes navigation to parameter setting menu much simpler because user just has to press key1;  3) parameters (mEDIT) screen doesn't highlight separators since they cannot be modified, and better title; and 4) fixed params:bang(id) to optionally take a parameter id.
 
 ### Preventing overlap for parameter option
 This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
@@ -46,20 +46,26 @@ The current method is a rather magical sequence of a short key1 press to get to 
 
 This library makes it so that the user can simply hit key1, with a long or short press, and they will be brought automatically to the script's parameter page and the first parameter will already be selected. And to get back the script page the user can simply hit key1 again with a long or short press. No more wondering why can navigate the menus due to hitting key1 just a bit longer than 0.25 sec!
 
-To enable this functionality the script needs to include `parameterExtensions` and call the library function jump_to_edit_params_screen() when the desired key sequence is hit. For example, for your script to have key1, long or short press, jump right to the parameters page one can do something like the following:
+To enable this functionality the script needs to add `parameterExt = require "nornsLib/parameterExt"` and call the library function `parameterExt.jump_to_edit_params_screen()` when the desired key sequence is hit. For example, for your script to have key1, long or short press, jump right to the parameters page one can do something like the following:
 ```
+parameterExt = require "nornsLib/parameterExt"
+
 function key(n, down)
   if n == 1 and down == 0 then
     -- Key1 up so jump to edit params directly. Don't require it
     -- to be a short press so that it is easier. And use key up
     -- event because if used key down then the subsequent key1 up would 
     -- switch back from edit params menu to the application screen.
-    jump_to_edit_params_screen()
+    parameterExt.jump_to_edit_params_screen()
   end
 
   ...
 end
 ```
+
+### Improved look of Parameters menu screen
+Parameters (mEDIT) screen doesn't highlight separators since they cannot be modified. Improved the title
+
 ### Fixed params:bang(id) to handle single parameter
 Turns out that in lua/core/clock.lua that params:bang("clock_tempo") is called to
 bang just the single parameter. But the standard bang() function bangs *ALL* 
@@ -113,14 +119,6 @@ to a number via tonumber() because would then loose resolution. And yes, it
 is doubtful that nono second resolution will be useful since doing a system
 call, which takes a while. Therefore util.time() will usually be sufficient.
 
-### util.tprint(obj)
-Like print(), but puts the epoch time in front. Really nice for understanding what
-parts of your code are taking a long time to execute and need to be 
-optimized. The time is shortened to only show 4 digits to left of decimal point,
-and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
-are just truncated instead of rounded because that level of precision is not
-actually useful for print statements.
-
 ### util.get_filename(full_filename)
 For getting just the filename from full directory path. Returns what is after
 the last slash of the full filename. If full filename doesn't have any slashes
@@ -148,22 +146,29 @@ last character if a newline. This means it works well for both shell commands
 like 'date' and also accessing APIs that can provide binary data, such as using
 curl to get an binary file.
 
-## `include "nornsLib/debugExt"`
-For debug logging statements that can be turned on or off, and contain useful debugging info such as function name, source code, and line number where called from. This is like a consdensed traceback.
 
-### debug.enable_print(value) 
-This function needs to be called if want debug.print() functions to actually output
-info. To enable, call debug.enable_print(true) or simply debug.enable_print(). To
-disable use debug.enable_print(false).
+## `log = require "nornsLib/loggingExt"`
+For logging statements. Each statement is prepended with timestamp so can easily determine what is taking so long to process. They are also written to file at `dust/data/<app>/logfile.txt` .  Debug statements can be enabled or disabled, and contain useful debugging info such as function name, source code, and line number where called from. 
 
-### debug.tprint(obj)
-Like util.tprint(obj), but only prints the timestamped message if debug enabled. Great for debugging.
+### log.print(obj)
+Like print(), but puts the epoch time in front. Really nice for understanding what
+parts of your code are taking a long time to execute and need to be 
+optimized. The time is shortened to only show 4 digits to left of decimal point,
+and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
+are just truncated instead of rounded because that level of precision is not
+actually useful for print statements.
 
-### debug.log(obj)
-An alternative and simpler name for debug.tprint(obj).
+### log.error(obj)
+Uses log.print(), but preceeds the text with "ERROR: "
+ 
+### log.enable_debug(value) 
+This function needs to be called if want log.debug() functions to actually output
+info. To enable, call log.enable_debug(true) or simply log.enable_debug(). To
+disable use log.enable_debug(false). This is like a condensed traceback.
 
-### debug.print(obj)
-Like print(), but only does the print if debug enabled. Does not include timestamp. Useful for debugging.
+### log.debug(obj)
+If enabled via log.enable_debug(value), outputs the object using log.print(), prefixed by "DEBUG: ", and with a second line that shows the context of function name, source code file name, and line number. Great for debugging!
+
 
 # Using NornsLib in your script
 The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
