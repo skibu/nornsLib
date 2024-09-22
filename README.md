@@ -3,7 +3,7 @@ Useful Lua libraries for Norns synth to make it easier to create scripts that ar
 
 See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
 
-## `json = require "nornsLib/jsonExt"`
+# `json = require "nornsLib/jsonExt"`
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
 ### json_str = json.encode(tbl, indent)
@@ -28,7 +28,7 @@ to a Lua table. This is done via a curl call. Allows compressed
 data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
-## `parameterExt = require "nornsLib/parameterExt"`
+# `parameterExt = require "nornsLib/parameterExt"`
 The parameter extensions library does several things: 1) prevents overlap for option parameters;  2) makes navigation to parameter setting menu much simpler because user just has to press key1;  3) parameters (mEDIT) screen doesn't highlight separators since they cannot be modified, and better title; and 4) fixed params:bang(id) to optionally take a parameter id.
 
 ### Preventing overlap for parameter option
@@ -74,7 +74,17 @@ bang function so that optionally only a single param can be banged. If id not sp
 then all all banged.
 
 
-## `require "nornsLib/screenExt"`
+# `psetExt = require "nornsLib/psetExt"`
+The original PSET menu screen has a different UI than other situations.  The list of presets is simply not clear. Therefore the presets are provided in a single line, as is done with other parameters. Also, switched from using upper case.
+
+
+# `require "nornsLib/textentryExt"`
+
+The original text entry screen can be a bit cumbersome. By simply including the textentryExt library the UI of the text entry screen is replaced. The text entered is presented in a larger font to make it clear what is happening. And a "_" is added to the end to further clarify where characters are entered. 
+
+Additionaly, the list of characters was changed to present the SAVE option, and the backspace "<-" option clearly. Also, instead of presenting the characters in ascii order, which is not intended for a UI, first lower case characters, then upper case characters, then numbers, and then just a few symbols are provided. This seems to make it easier to find desired character. Also, one doesn't have to figure out how to switch focus from the characters line to the BS OK line since those options are available right in the character list.
+
+# `require "nornsLib/screenExt"`
 The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
 
 All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
@@ -105,7 +115,8 @@ And there is a function for freeing an image buffer when you are done with it. M
 And lastly, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
 * screen.clear() - fixes existing function
 
-## `require "nornsLib/utilExt"`
+
+# `require "nornsLib/utilExt"`
 
 ### util.sleep(seconds)
 Sleeps specified fraction number of seconds. Implemented by doing a system call.
@@ -147,7 +158,7 @@ like 'date' and also accessing APIs that can provide binary data, such as using
 curl to get an binary file.
 
 
-## `log = require "nornsLib/loggingExt"`
+# `log = require "nornsLib/loggingExt"`
 For logging statements. Each statement is prepended with timestamp so can easily determine what is taking so long to process. They are also written to file at `dust/data/<app>/logfile.txt` .  Debug statements can be enabled or disabled, and contain useful debugging info such as function name, source code, and line number where called from. 
 
 ### log.print(obj)
