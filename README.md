@@ -28,7 +28,7 @@ to a Lua table. This is done via a curl call. Allows compressed
 data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
-## `include "nornsLib/parameterExt"`
+## `parameterExt = require "nornsLib/parameterExt"`
 The parameter extensions library does several things: 1) prevents overlap for option parameters;  2) makes navigation to parameter setting menu much simpler because user just has to press key1;  3) parameters (mEDIT) screen doesn't highlight separators since they cannot be modified, and better title; and 4) fixed params:bang(id) to optionally take a parameter id.
 
 ### Preventing overlap for parameter option
