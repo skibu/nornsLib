@@ -240,6 +240,80 @@ local function special_screen_text_right(value)
 end
 
 
+-- This code copied directly from core/menu/params.lua
+local page = nil
+
+local function build_page()
+  page = {}
+  local i = 1
+  repeat
+    if params:visible(i) then table.insert(page, i) end
+    if params:t(i) == params.tGROUP then
+      i = i + params:get(i) + 1
+    else i = i + 1 end
+  until i > params.count
+end
+
+
+-- For displaying the parameter list. Mostly copied directly from core/menu/params.lua, 
+-- but modified to not highlight separators since user can't change them. Also, the
+-- header modified. To be called when m.mode == mEDIT.
+local function params_list_redraw()
+  screen.clear()
+  
+  -- Since the original redraw() uses "m"
+  local m = params_menu
+  
+  -- Need to create the page local variable
+  build_page()
+  
+  if m.pos == 0 then
+    -- Modified to display a nicer title for the menu screen
+    local title = m.group and "Parameters / " .. m.groupname or "Parameters for " .. norns.state.shortname
+    screen.level(4)
+    screen.move(0,10)
+    screen.text(title)
+  end
+  for i=1,6 do
+    if (i > 2 - m.pos) and (i < #page - m.pos + 3) then
+      local p = page[i+m.pos-2]
+      local t = params:t(p)
+      if i==3 and t ~= params.tSEPARATOR then screen.level(15) else screen.level(4) end
+      if t == params.tSEPARATOR then
+        screen.move(0,10*i+2.5)
+        screen.line_rel(127,0)
+        screen.stroke()
+        screen.move(63,10*i)
+        screen.text_center(params:get_name(p))
+      elseif t == params.tGROUP then
+        screen.move(0,10*i)
+        screen.text(params:get_name(p) .. " >")
+      else
+        screen.move(0,10*i)
+        screen.text(params:get_name(p))
+        screen.move(127,10*i)
+        if t ==  params.tTRIGGER then
+          if _menu.binarystates.triggered[p] and _menu.binarystates.triggered[p] > 0 then
+            screen.rect(124, 10 * i - 4, 3, 3)
+            screen.fill()
+          end
+        elseif t == params.tBINARY then
+          fill = _menu.binarystates.on[p] or _menu.binarystates.triggered[p]
+          if fill and fill > 0 then
+            screen.rect(124, 10 * i - 4, 3, 3)
+            screen.fill()
+          end
+        else
+          screen.text_right(params:string(p))
+        end
+      end
+    end
+  end
+  
+  screen.update()
+end
+
+
 -- The modified redraw() function. Temporarily switches to using special screen.text() 
 -- and screen.text_right() functions that allow output_value_without_overlap() to
 -- be called instead of screen.text_right. This way can make sure that the option
@@ -256,9 +330,14 @@ local function modified_params_menu_redraw()
   original_text_right_func = screen.text_right
   screen.text_right = special_screen_text_right
 
+  if params_menu.mode == mEDIT then
+    -- Since on mEDIT screen display it using special function
+    params_list_redraw()
+  else
   -- Call the original redraw function, which will in turn use the temporary 
   -- screen.text() and screen.text_right() functions
-  params_menu._original_params_menu_parameter_redraw()
+    params_menu._original_params_menu_parameter_redraw()
+  end
   
   -- Restore the screen.text() and screen.text_right() functions
   screen.text = original_text_func
