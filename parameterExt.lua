@@ -498,9 +498,10 @@ if option.set ~= option._original_set_function then
   option._original_set_function = option.set
 end  
 
---- Overriding set so that can take a string value or an integer value. 
--- Used when reading presets. This just adds functionality so don't need
--- to restore the original function at the end.
+--- Overriding set() from core/params/option.lua so that can take a string value or 
+-- an integer value. Used when reading presets. This just adds functionality so don't 
+-- need to restore the original function at the end. Since this is an augmentation to
+-- the original set() don't need to restore the original function when finalizing.
 -- @tparam str
 -- @tparam silent if true then won't bang the parameter
 function option:set(str, silent)
@@ -516,8 +517,6 @@ function option:set(str, silent)
       end
     end
   end
-  
-  log.debug("In modified Option:set() id="..self.id.." index="..tostring(index).." str="..str)
   
   -- Call original set function using index
   option._original_set_function(self, index, silent)
