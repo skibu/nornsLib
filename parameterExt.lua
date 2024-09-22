@@ -8,11 +8,17 @@
 
 ------------------------------------------------------------------------------------------
 
+-- load the nornsLib  mod to setup system hooks
+local nornsLib = require "nornsLib/nornsLib"
+
 -- Get access to the PARAMS menu class. 
 local params_menu = require "core/menu/params"
 
--- For debug logging
-require "nornsLib/debugExt"
+-- For logging
+local log = require "nornsLib/loggingExt"
+
+-- So can be used with require and as a module
+local ParameterExt = {}
 
 ------------------------------------------------------------------------------------------
 ------------- Local functions that had to be copied from core/menu/params.lua ------------
@@ -33,15 +39,14 @@ local first_time_jumping_to_edit_params = true
 -- easily change app params. For when k1 pressed from within the script. Really nice
 -- feature since it makes param changes easier. This function should be called in the
 -- script's key() method for key1 is released. 
-function jump_to_edit_params_screen()
-  debug.log("Jumping to parameter menu screen")
+function ParameterExt.jump_to_edit_params_screen()
+  log.debug("Jumping to parameter menu screen")
   
   -- Change to menu mode 
   _menu.set_mode(true) 
 
   -- Remember current mode so that can return to it if k2 pressed
   params_menu.mode_prev = params_menu.mode
-  debug.log("==== set params_menu.mode_prev to "..params_menu.mode_prev)
 
   -- Go to EDIT screen of the PARAMS menu. Needed in case user was at another PARAMS 
   -- screen, like PSET.
@@ -75,6 +80,21 @@ function jump_to_edit_params_screen()
 end
 
 ---------------------------------------------------------------------------------------
+----------------------------- So can determine what caused a bang() -------------------
+---------------------------------------------------------------------------------------
+
+-- Turns out that it can be really useful to know for an Option if a bang() originated 
+-- by user turning encoder on the mEDIT parameters menu page, or due to all the options
+-- being set at once due to a preset being loaded or some other reason. By understanding
+-- the source of the bang the action callback can determine whether other parameters
+-- need to be updated as well. This function returns true if user currently on the
+-- mEDIT parameter editing menu page, which indicates that a bang() came from user 
+-- updating parameter using encoder.
+function params.in_param_edit_menu()
+  return _menu.mode == true and _menu.page == "PARAMS" and params_menu.mode == mEDIT
+end
+
+---------------------------------------------------------------------------------------
 ----------------------------- fix for ParamSet:bang() --------------------------------
 ---------------------------------------------------------------------------------------
 
@@ -83,7 +103,7 @@ end
 -- parameters, which is not desired. So this definition overrides the bang function
 -- so that only a single param can be banged. If id not specified then all all banged.
 function params:bang(id)
-  debug.log("doing ParamSet:bang() for param id="..tostring(id))
+  log.debug("doing ParamSet:bang() for param id="..tostring(id))
   for _,v in pairs(self.params) do
     if (id == nil or id == v.id) and v.t ~= self.tTRIGGER and 
        not (v.t == self.tBINARY and v.behavior == 'trigger' and v.value == 0) then
@@ -103,7 +123,7 @@ end
 -- possibly shorter version. A way this might be done to remove spaces after commas
 -- is: function shorten() return param:gsub(", ", ",") end
 local _shortener_function = nil
-function set_selector_shortener(shortener_function)
+function ParameterExt.set_selector_shortener(shortener_function)
   _shortener_function = shortener_function
 end
 
@@ -111,7 +131,7 @@ end
 -- Normally the value text for menu parameters are displayed right justified. But it
 -- can look better to have them be left justified and thereby line up visually.
 local _left_align = false
-function set_left_align_parameter_values(should_left_align)
+function ParameterExt.set_left_align_parameter_values(should_left_align)
   _left_align = should_left_align
 end
 
@@ -183,44 +203,21 @@ local function output_value_without_overlap(value_str, label_str)
   if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
 end
 
-      
-----------------------------------------------------------------------------------
-----------------------------------------------------------------------------------
-----------------------------------------------------------------------------------
-
--- Make sure this part of the file only loaded once. This prevents infinite recursion 
--- when overriding system functions. Bit complicated because need to use something
--- that lasts across script restarts. The solution is to use add a boolean to
--- the object whose function is getting overloaded.
-
--- params_menu is the menu that contains the params. This is the one that needs to have 
--- function ptrs modified. So this is where should store the already_included boolean.
-
--- If the special variable already set then return and don't process this file further
-if params_menu["already_included"] ~= nil then 
-  print("parameterExt.lua already included so not doing so again")
-  return 
-end
-  
--- Need to process this file
-params_menu["already_included"] = true
-print("parameterExt.lua not yet loaded so loading now...")
-
 
 ----------------------------------------------------------------------------------
 ------------------------- Make sure selector text doesn't overlap ----------------
 ----------------------------------------------------------------------------------
 
 -- Need screen extensions to get current font values when redrawing
-include "nornsLib/screenExt"
+require "nornsLib/screenExt"
 
--- For keeping track of original redraw() so that it can be used within the modified code
-local original_redraw_function = params_menu.redraw
-local possible_label
 
 -- For keeping track of original text() and text_right() functions so they can be called
 local original_text_func
 local original_text_right_func
+
+-- For keeping track of labels. Set in special_screen_text
+local possible_label
 
 -- So can temporarily switch to using special screen.text() function that stores the last
 -- text written using screen.text(value)
@@ -243,12 +240,11 @@ local function special_screen_text_right(value)
 end
 
 
-
--- The new redraw() function. Temporarily switches to using special screen.text() 
+-- The modified redraw() function. Temporarily switches to using special screen.text() 
 -- and screen.text_right() functions that allow output_value_without_overlap() to
 -- be called instead of screen.text_right. This way can make sure that the option
 -- label and values don't overlap. 
-params_menu.redraw = function()
+local function modified_params_menu_redraw()
   -- Temporarily switch to using special screen.text() function that stores the last
   -- text written using screen.text(str)
   original_text_func = screen.text
@@ -262,7 +258,7 @@ params_menu.redraw = function()
 
   -- Call the original redraw function, which will in turn use the temporary 
   -- screen.text() and screen.text_right() functions
-  original_redraw_function()
+  params_menu._original_params_menu_parameter_redraw()
   
   -- Restore the screen.text() and screen.text_right() functions
   screen.text = original_text_func
@@ -290,6 +286,7 @@ local metro = require 'core/metro'
 local t = metro[31]
 
 
+-- This was copied verbatim from original code
 t.event = function(_)
   _menu.key(1,1)
   pending = false
@@ -298,8 +295,8 @@ end
 
 
 -- Overriding the key() function in lua/core/menu.lua to better handle key1 inputs.
-_norns.key = function(n, z)
-  debug.log("In overriden _norns.key() and n="..n.. " z="..z)
+local function modified_norns_key(n, z)
+  log.debug("In overriden _norns.key() and n="..n.. " z="..z)
   -- key 1 detect for short press
   if n == 1 then
     if z == 1 then
@@ -350,3 +347,100 @@ _norns.key = function(n, z)
 end
 
 
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the pset functions to their originals
+local function _initialize_parameters()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  _norns._original_key_function = _norns.key
+  _norns.key = modified_norns_key
+  
+  params_menu._original_params_menu_parameter_redraw = params_menu.redraw
+  params_menu.redraw = modified_params_menu_redraw
+end
+
+
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the pset functions to their originals
+local function _finalize_parameters()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  _norns.key = _norns._original_key_function
+  
+  params_menu.redraw = params_menu._original_params_menu_parameter_redraw
+end
+
+-- Configure the pre-init and a post-cleanup hooks in order to modify system 
+-- code before init() and then to reset the code while doing cleanup.
+-- Note: the numbers in the names are so that the hooks for parameterExt and
+-- psetExt are called in proper order, which is done alphabetically. Needed to
+-- make sure that since params_menu.redraw() is modified in both, that the
+-- init order is the oppose of the finalize order.
+local hooks = require 'core/hook'
+hooks["script_pre_init"]:register("(2) pre init for NornsLib parameter extension", 
+  _initialize_parameters)
+hooks["script_post_cleanup"]:register("(1) post cleanup for NornsLib parameter extension",
+  _finalize_parameters)
+
+
+-----------------------------------------------------------------------------------------
+-------------------- Have Option parameter store string instead of index ----------------
+-----------------------------------------------------------------------------------------
+
+local option = require 'core/params/option'
+
+-- Remember the original get() function by adding it to the Option class
+if option.get ~= option._original_get_function then
+  option._original_get_function = option.get
+end  
+
+-- Overriding get() so that it instead returns string(). This way when writing preset
+-- get the value instead of the index.
+function option:get()
+  -- If the parameter is not to be saved then it is a special system param like 
+  -- "clock_source". In this case, or if tweaking encoders or keys in parameter 
+  -- editor menu, should return the usual index value.
+  if not self.save or params.in_param_edit_menu() then 
+    return option._original_get_function(self)
+  end
+  
+  str = self:string()
+  log.debug("In modified Option:get() for option id="..self.id.." return value="..str)
+  return str
+end
+
+
+-- Remember the original set() function by adding it to the Option class
+if option.set ~= option._original_set_function then
+  option._original_set_function = option.set
+end  
+
+--- Overriding set so that can take a string value or an integer value. 
+-- Used when reading presets. This just adds functionality so don't need
+-- to restore the original function at the end.
+-- @tparam str
+-- @tparam silent if true then won't bang the parameter
+function option:set(str, silent)
+  -- Convert str to index
+  local index = tonumber(str)
+  -- If str is not an integer so determine the index of the str in the Option
+  if index == nil or math.floor(index) ~= index then
+    -- str is not an integer so find the index where it is the option
+    for k, v in ipairs(self.options) do
+      if v == str then 
+        index = k 
+        break 
+      end
+    end
+  end
+  
+  log.debug("In modified Option:set() id="..self.id.." index="..tostring(index).." str="..str)
+  
+  -- Call original set function using index
+  option._original_set_function(self, index, silent)
+end
+
+
+return ParameterExt

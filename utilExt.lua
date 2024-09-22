@@ -1,7 +1,7 @@
 -- Miscellaneous utility extensions. All functions are put into the util object.
 
--- For debug logging
-require "nornsLib/debugExt"
+-- For logging
+local log = require "nornsLib/loggingExt"
 
 -- Like os.execute() but returns the result string from the command. And different
 -- from util.os_capture() by having a more clear name, and by only filtering out
@@ -38,17 +38,6 @@ end
 -- call, which takes a while. Therefore util.time() will usually be sufficient.
 function util.epochtime_str()
   return util.execute_command("date +%s.%N")
-end
-
-
--- print(), but puts the epoch time in front. Really nice for understanding what
--- parts of your code are taking a long time to execute and need to be 
--- optimized. The time is shortened to only show 4 digits to left of decimal point,
--- and 4 digits to the right. Showing more would just be kind of ugly. 
-function util.tprint(obj)
-  time_str = string.format("%.4f", util.time() % 10000)
-  
-  print(time_str .. " - " .. tostring(obj))
 end
 
 
@@ -154,7 +143,7 @@ local function _wait_for_file_callback(stage, mtro)
     current_size = util.file_size(filename)
     if current_size == mtro._prev_file_size then
       -- File exists and is no longer changing size. Done so wrap things up
-      util.tprint("File fully loaded so calling callback. ".. 
+      log.debug("File fully loaded so calling callback. ".. 
         util.get_filename(filename).." size="..current_size)
 
       -- Done waiting so done with timer
@@ -169,18 +158,18 @@ local function _wait_for_file_callback(stage, mtro)
       mtro._file_available_callback(filename)
     else
       -- File still changing size so not ready yet
-      debug.log("File still changing size so waiting. ".. util.get_filename(filename) .." size=" .. current_size) 
+      log.debug("File still changing size so waiting. ".. util.get_filename(filename) .." size=" .. current_size) 
       mtro._prev_file_size = current_size
     end
   else
     -- File doesn't even exist yet
     mtro._prev_file_size = 0
-    --debug.log("Waiting for file to exist ".. util.get_filename(filename)) 
+    --log.debug("Waiting for file to exist ".. util.get_filename(filename)) 
   end
   
   -- If exceeded allowable counts then give up. Free the timer
   if mtro.count > -1 and stage >= mtro.count then
-    util.tprint("Exceeded count so giving up waiting for file=" .. filename)
+    log.debug("Exceeded count so giving up waiting for file=" .. filename)
     metro.free(mtro.id)
   end
 end
@@ -193,7 +182,7 @@ end
 function util.wait(full_filename, file_available_callback, tick_time, max_time)
   -- If file already exists and is not empty then call the callback immediately
   if util.file_exists(full_filename) and util.file_size(full_filename) > 0 then
-    debug.log("File already available so calling callback. file="..full_filename)
+    log.debug("File already available so calling callback. file="..full_filename)
     file_available_callback(full_filename)
     return
   end

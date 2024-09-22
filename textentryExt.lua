@@ -13,6 +13,9 @@
 --- This code works by substituting in new functions for the textentry te object.
 
 
+-- For logging
+local log = require "nornsLib/loggingExt"
+
 local te_kbd_cb = require 'lib/textentry_kbd'
 local keyboard = require 'core/keyboard'
 local te = require "textentry"
@@ -28,7 +31,7 @@ te.available_chars = enter_key..backspace_key..
 -- Called whenever any key is pressed or released. For handling just special
 -- keys ESC, ENTER, and BACKSPACE.
 local function keycode(c, value)
-  util.dprint("In keycode() c="..c.." value="..value)
+  log.debug("In keycode() c="..c.." value="..value)
   if keyboard.state.ESC then
     -- Restore text to original value and exit
     te.txt = te.initial_value
@@ -54,7 +57,7 @@ end
 
 -- Called when regular character is typed
 local function keychar(a)
-  util.dprint("In keychar() a="..a)
+  log.debug("In keychar() a="..a)
   
   -- Determine which position the char is at so that it will be highlighted
   local new_pos = string.find(te.available_chars, a)
@@ -81,13 +84,13 @@ local function standard_check(txt)
 end
 
 
--- Called to setup and enter textentry screen.
--- @param callback: function to be called when user finished editing text
--- @param default: the initial value of the text
--- @param heading: text to be displayed at top of screen to explain context
--- @param check: function for takes in current text and returns a warning str if there is a problem
-te.enter = function(callback, default, heading, check)
-  util.dprint("Using modified textentry. default="..default.." heading="..heading)
+--- Called to setup and enter textentry screen.
+-- @tparam callback: function to be called when user finished editing text
+-- @tparam default: the initial value of the text
+-- @tparam heading: text to be displayed at top of screen to explain context
+-- @tparam check: function for takes in current text and returns a warning str if there is a problem
+local function modified_enter_function(callback, default, heading, check)
+  log.debug("Using modified textentry. default="..default.." heading="..heading)
   te.txt = default or ""
   te.initial_value = default or "" -- For if esc hit
   te.heading = heading or ""
@@ -134,7 +137,9 @@ end
 
 
 -- Called when user done with text entry. Calls the callback that was setup.
-te.exit = function()
+-- The differene of this function from the original source code is that it
+-- also restores font info since the modified text entry mucks around with the font. 
+local function modified_exit_function()
   te_kbd_cb.code = nil
   te_kbd_cb.char = nil
 
@@ -158,7 +163,7 @@ te.exit = function()
   
   -- Call the callback
   if te.txt then 
-    util.dprint("Textentry exiting and calling callback for text="..te.txt)
+    log.debug("Textentry exiting and calling callback for text="..te.txt)
     te.callback(te.txt)
   else 
     te.callback(nil) 
@@ -167,7 +172,7 @@ end
 
 
 -- Called when key hit when in textentry screen
-te.key = function(n,z)
+local function modified_key_function(n,z)
   -- If key2 pressed then done. Exit and go back to previous screen
   if n==2 and z==1 then
     te.exit()
@@ -197,7 +202,7 @@ end
 
 
 -- Called when encoder turned when in textentry screen. Can use enc2 or enc3.
-te.enc = function(n,delta)
+local function modified_enc_function(n,delta)
   -- If neither encoder 2 or 3 then ignore
   if n==1 then return end
   
@@ -214,7 +219,7 @@ end
 
 
 -- Draws the text entry screen
-te.redraw = function()
+local function modified_redraw_function()
   screen.clear()
   
   -- Draw heading (specified when te.enter() called)
@@ -234,11 +239,11 @@ te.redraw = function()
   screen.text(label)
   
   -- Draw the current text string
-  screen.font_face(5) -- Roboto Regular
-  screen.aa(1)
+  screen.font_face(4) -- Roboto Regular Light (Thin lower case chars were hard to read)
+  screen.aa(0)
   local label_width = screen.text_untrimmed_extents(label)
   screen.move(label_width, 32)
-  screen.font_size(11)
+  screen.font_size(10)
   screen.level(15)
   screen.text(te.txt)
   
@@ -302,3 +307,47 @@ te.redraw = function()
   
   screen.update()
 end
+
+
+-- This function will be called before init() is done via magic of hooks.
+-- Stores original function pointers and switches to use the modified functions.
+local function _initialize_textentry()
+  te._original_redraw_function = te.redraw
+  te.redraw = modified_redraw_function
+  
+  te._original_enc_function = te.enc
+  te.enc = modified_enc_function
+  
+  te._original_key_function = te.key
+  te.key = modified_key_function
+  
+  te._original_enter_function = te.enter
+  te.enter = modified_enter_function
+  
+  te._original_exit_function = te.exit
+  te.exit = modified_exit_function
+end
+
+
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the textentry functions to their originals
+local function _finalize_textentry()
+  te.redraw = te._original_redraw_function
+  
+  te.enc = te._original_enc_function
+  
+  te.key = te._original_key_function
+  
+  te.enter = te._original_enter_function
+  
+  te.exit = te._original_exit_function
+end
+
+
+-- Configure the pre-init and a post-cleanup hooks in order to modify system 
+-- code before init() and then to reset the code while doing cleanup.
+local hooks = require 'core/hook'
+hooks["script_pre_init"]:register("pre init for NornsLib textentry extension", 
+  _initialize_textentry)
+hooks["script_post_cleanup"]:register("post cleanup for NornsLib textentry extension",
+  _finalize_textentry)

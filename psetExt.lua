@@ -1,14 +1,20 @@
 -- For making the PSET menu screen easier to use. 
 
+-- load the nornsLib  mod to setup system hooks
+local nornsLib = require "nornsLib/nornsLib"
+
 -- Get access to the PARAMS menu class. Also use the name "m" since that is what
 -- is used in the original code.
 local params_menu = require "core/menu/params"
 local m = params_menu
 
--- For debug logging
-require "nornsLib/debugExt"
+-- For logging
+local log = require "nornsLib/loggingExt"
 
 local textentry = require "textentry"
+
+-- So can be used as module using require instead of include
+local PsetExt = {}
 
 ------------------------------------------------------------------------------------------
 ------------- Local functions that had to be copied from core/menu/params.lua ------------
@@ -25,6 +31,8 @@ local mPSETDELETE = 3
 -- pset is a local there.
 m.pset = {}
 
+-- Duplication of the original code, which was needed to be done since it was
+-- declared local.
 local function pset_list(results)
   m.pset = {}
   m.ps_n = 0
@@ -64,7 +72,7 @@ end
 -- it is a local there and it sets the pset local. This function is not made local
 -- here so that it can be accessed by parameterExt.lua
 local function init_pset()
-  debug.log("psetExt scanning all psets...")
+  log.debug("psetExt scanning all psets...")
   norns.system_cmd('ls -1 '..norns.state.data..norns.state.shortname..'*.pset | sort', 
     pset_list)
 end
@@ -91,7 +99,7 @@ end
 -- params:read(norns.state.pset_last) or simply params:read() or simplest 
 -- params:default() to do that.
 local function write_pset_last(ps_pos)
-  debug.log("In write_pset_last() and ps_pos="..ps_pos)
+  log.debug("In write_pset_last() and ps_pos="..ps_pos)
   local file = norns.state.data.."pset-last.txt"
   local f = io.open(file,"w")
   io.output(f)
@@ -107,26 +115,36 @@ local pset_save_redraw
 -- Writes the specified param set, and also writes it as the last one. Called
 -- when user finishes with the textentry window.
 local function write_pset(name)
-  debug.log("In write_pset() and name="..name.." and m.ps_pos="..m.ps_pos)
-  -- FIXME is this check on name really needed? Ever nil?
-  if name then
-    if name == "" then name = params.name end
-    params:write(m.ps_pos, name)
-    m.ps_last = m.ps_pos
-    write_pset_last(m.ps_pos) -- save last pset loaded
-    init_pset()               -- since change was made need to reload param sets
-    norns.pmap.write()        -- write parameter map too
-    
-    -- Display that saving the param set
-    pset_save_redraw()
-  end
+  log.debug("In write_pset() and name="..tostring(name).." and m.ps_pos="..m.ps_pos)
+
+  -- Do nothing if name is nil
+  if name == nil then return end
+  
+  -- Original code uses the secret params.name, the name of the preset, if name is empty string
+  if name == "" then name = params.name end
+  
+  -- Write the preset file
+  params:write(m.ps_pos, name)
+  
+  -- Remember that the past preset used is ps_pos, and then store that info in the pset_last file
+  m.ps_last = m.ps_pos
+  write_pset_last(m.ps_pos) -- save last pset loaded
+  
+  -- since change was made need to reload param sets
+  init_pset()
+  
+  -- write parameter map file too
+  norns.pmap.write()        
+  
+  -- Display that saving the param set
+  pset_save_redraw()
 end
 
 
 -- This function didn't exist in params.lua but it should have
 local function load_pset(ps_pos)
   if ps_pos <= #m.pset then
-    debug.log("Loading param set #"..ps_pos)
+    log.debug("Loading param set #"..ps_pos)
     params:read(ps_pos)
     m.ps_last = ps_pos
     write_pset_last(ps_pos) -- save last pset loaded
@@ -158,16 +176,16 @@ local function pset_menu_redraw()
   -- Header for the menu
   screen.level(4)
   screen.move(0,10)
-  screen.text("Parameters Storage (PSET)")
+  screen.text("Presets Storage (PSET)")
   
   -- Display the current parameter set. First display the label
   local top = 24
   screen.move(0, top)
   screen.level(9)
-  local pset_label = "Param Set: "
+  local pset_label = "Preset: "
   screen.text(pset_label)
   
-  -- Display the selected param set
+  -- Display the selected preset
   screen.move(screen.text_untrimmed_extents(pset_label), top)
   screen.level(15)
   local pset_name = (m.ps_pos == m.ps_last and "*" or "") ..get_pset_name(m.ps_pos)
@@ -267,16 +285,14 @@ end
 --    params:add_separator("Save or load presets")
 --    params:add_trigger("pset", "PSET >") 
 --    params:set_action("pset", jump_to_pset_screen )
-function jump_to_pset_screen()
-  debug.log("Jumping to parameter save/load/delete menu screen")
+function PsetExt.jump_to_pset_screen()
+  log.debug("Jumping to parameter save/load/delete menu screen")
   
   -- Most likely already in menu mode, but explicitly change to it just to be safe 
   _menu.set_mode(true) 
   
   -- Remember current mode so that can return to it if k2 pressed
   params_menu.mode_prev = params_menu.mode
-  debug.log("FIXME set params_menu.mode_prev to "..params_menu.mode_prev..
-    " where mSELECT="..mSELECT.." mEDIT="..mEDIT.." mPSET="..mPSET)
   
   -- Since had to have a local version of init_pset(), can call it directly. This 
   -- means that can just set params_menu.mode to mPSET in order to go to that window,
@@ -290,28 +306,11 @@ end
 ---------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------
 
--- Make sure this portion of file only loaded once. This prevents infinite recursion  
--- when overriding system functions. Bit complicated because need to use something
--- that lasts across script restarts. The solution is to use add a boolean to
--- the object whose function is getting overloaded.
-
 -- params_menu is the menu that contains the params. This is the one that needs to have 
--- function ptrs modified. So this is where should store the already_included boolean.
+-- function ptrs modified. Therefore using hooks to store the original functions at init
+-- and then restore them back to the original when finalizing script.
 
--- If the special variable already set then return and don't process this file further
-if params_menu["pset_already_included"] ~= nil then 
-  print("psetExt.lua already included so not doing so again")
-  return 
-end
-  
--- Need to process this file
-params_menu["pset_already_included"] = true
-print("psetExt.lua not yet loaded so loading now...")
-
-
-local original_params_menu_redraw_func = params_menu.redraw
-
-params_menu.redraw = function()
+local function modified_redraw_function()
   -- If drawing the PSET menu then use the new PSET functions
   if params_menu.mode == mPSET then
     pset_menu_redraw()
@@ -322,17 +321,15 @@ params_menu.redraw = function()
   end
   
   -- Was not a special PSET menu request so call the original redraw
-  original_params_menu_redraw_func()
+  params_menu._original_redraw_function()
 end
 
 
-local original_params_menu_key_func = params_menu.key
-
-params_menu.key = function(n, z)
+local function modified_key_function(n, z)
   if z == 1 then
-    debug.log("In modified params_menu.key and n="..n.." z="..z)
+    log.debug("In modified params_menu.key and n="..n.." z="..z)
     --json.print(_menu.m.PARAMS)
-    debug.log("m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
+    log.debug("m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
       " m.pos="..m.pos)
   end
   
@@ -346,16 +343,16 @@ params_menu.key = function(n, z)
       -- key2 means go back to previous menu screen
       if params_menu.mode == mPSETDELETE then
         -- Go back to PSET menu without actually deleting
-        debug.log("Going back to mPSET screen")
+        log.debug("Going back to mPSET screen")
         params_menu.mode = mPSET
       else
         if params_menu.mode_prev == mEDIT then
           -- Go back to the edit params page
-          debug.log("Going back to mEDIT screen")
+          log.debug("Going back to mEDIT screen")
           params_menu.mode = mEDIT
         else
           -- Go back to the parameters mSELECT menu page
-          debug.log("Going back to mSELECT screen")
+          log.debug("Going back to mSELECT screen")
           params_menu.mode = mSELECT
         end
       end
@@ -373,17 +370,17 @@ params_menu.key = function(n, z)
         -- ps_action is which command selected in PSET menu: SAVE, LOAD, or DELETE
         if params_menu.ps_action == 1 then
           -- SAVE action
-          debug.log("K3 hit for Save & Name option")
+          log.debug("K3 hit for Save & Name option")
           local initial_name = m.ps_pos <= #m.pset and m.pset[m.ps_pos].name or ""
-          textentry.enter(write_pset, initial_name, "Name PSET #"..m.ps_pos.." and Save")
+          textentry.enter(write_pset, initial_name, "Name the Preset #"..m.ps_pos.." and Save")
         elseif params_menu.ps_action == 2 and m.ps_pos <= #m.pset then
           -- LOAD action
-          debug.log("K3 hit for Load option")
+          log.debug("K3 hit for Load option")
           load_pset(m.ps_pos)
           pset_load_redraw()
         elseif params_menu.ps_action == 3 and m.ps_pos <= #m.pset then
           -- DELETE action
-          debug.log("K3 hit for Delete option so going to PSETDELETE menu screen")
+          log.debug("K3 hit for Delete option so going to PSETDELETE menu screen")
           params_menu.mode = mPSETDELETE
         end
 
@@ -396,20 +393,18 @@ params_menu.key = function(n, z)
     -- so that if changing to another menu will know where came from.
     if params_menu.mode == mSELECT then
       params_menu.mode_prev = params_menu.mode
-      debug.log("In psetExt.key() and setting params_menu.mode_prev to "..params_menu.mode_prev)
+      log.debug("In psetExt.key() and setting params_menu.mode_prev to "..params_menu.mode_prev)
     end
     
     -- Do not need to handle specially so just call the original key function
-    debug.log("Calling original menu key function")
-    original_params_menu_key_func(n, z)
+    log.debug("Calling original menu key function")
+    params_menu._original_key_function(n, z)
   end
 end  
 
 
 -- For when encoder changed
-local original_params_menu_enc_func = params_menu.enc
-
-params_menu.enc = function(n, d)
+local function modified_enc_function(n, d)
   if m.mode == mPSET then
     -- On PSET menu screen so handle selection of action or pset
     if n==2 then
@@ -422,6 +417,51 @@ params_menu.enc = function(n, d)
   end
   
   -- Not handled specially, so call original handler
-  original_params_menu_enc_func(n, d)
+  params_menu._original_enc_function(n, d)
 end
 
+
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the pset functions to their originals
+local function _initialize_pset()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  params_menu._original_enc_function = params_menu.enc
+  params_menu.enc = modified_enc_function
+
+  params_menu._original_key_function = params_menu.key
+  params_menu.key = modified_key_function
+
+  params_menu._original_redraw_function = params_menu.redraw
+  params_menu.redraw = modified_redraw_function
+end
+
+
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the pset functions to their originals
+local function _finalize_pset()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  params_menu.enc = params_menu._original_enc_function
+  
+  params_menu.key = params_menu._original_key_function
+  
+  params_menu.redraw = params_menu._original_redraw_function
+end
+
+
+-- Configure the pre-init and a post-cleanup hooks in order to modify system 
+-- code before init() and then to reset the code while doing cleanup.
+-- Note: the numbers in the names are so that the hooks for parameterExt and
+-- psetExt are called in proper order, which is done alphabetically. Needed to
+-- make sure that since params_menu.redraw() is modified in both, that the
+-- init order is the oppose of the finalize order.
+local hooks = require 'core/hook'
+hooks["script_pre_init"]:register("(1) pre init for NornsLib pset extension", 
+  _initialize_pset)
+hooks["script_post_cleanup"]:register("(2) post cleanup for NornsLib pset extension",
+  _finalize_pset)
+
+return PsetExt
