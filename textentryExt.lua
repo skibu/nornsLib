@@ -313,7 +313,7 @@ local function modified_redraw_function()
 end
 
 
--- This function will be called before init() is done via magic of hooks.
+-- Will be called by pre_init hook when script starts up.
 -- Stores original function pointers and switches to use the modified functions.
 local function initialize_textentry()
   -- If NornsLib not enabled for this app then don't do anything
@@ -342,15 +342,19 @@ local function finalize_textentry()
   -- If NornsLib not enabled for this app then don't do anything
   if not nornsLib.enabled() then return end
   
+  -- Restore the function ppointers to their original values
   te.redraw = te._original_redraw_function
-  
   te.enc = te._original_enc_function
-  
   te.key = te._original_key_function
-  
   te.enter = te._original_enter_function
-  
   te.exit = te._original_exit_function
+  
+  -- nil these so it will be garbage collected and then not appear in _norns anymore
+  te._original_redraw_function = nil
+  te._original_enc_function = nil
+  te._original_key_function = nil
+  te._original_enter_function = nil
+  te._original_exit_function = nil
 end
 
 

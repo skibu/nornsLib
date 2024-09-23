@@ -428,43 +428,6 @@ local function modified_norns_key(n, z)
 end
 
 
--- Will be called by script_post_cleanup hook when script is being shut down.
--- Restores the pset functions to their originals
-local function _initialize_parameters()
-  -- If NornsLib not enabled for this app then don't do anything
-  if not nornsLib.enabled() then return end
-  
-  _norns._original_key_function = _norns.key
-  _norns.key = modified_norns_key
-  
-  params_menu._original_params_menu_parameter_redraw = params_menu.redraw
-  params_menu.redraw = modified_params_menu_redraw
-end
-
-
--- Will be called by script_post_cleanup hook when script is being shut down.
--- Restores the pset functions to their originals
-local function _finalize_parameters()
-  -- If NornsLib not enabled for this app then don't do anything
-  if not nornsLib.enabled() then return end
-  
-  _norns.key = _norns._original_key_function
-  
-  params_menu.redraw = params_menu._original_params_menu_parameter_redraw
-end
-
--- Configure the pre-init and a post-cleanup hooks in order to modify system 
--- code before init() and then to reset the code while doing cleanup.
--- Note: the numbers in the names are so that the hooks for parameterExt and
--- psetExt are called in proper order, which is done alphabetically. Needed to
--- make sure that since params_menu.redraw() is modified in both, that the
--- init order is the oppose of the finalize order.
-local hooks = require 'core/hook'
-hooks["script_pre_init"]:register("(2) pre init for NornsLib parameter extension", 
-  _initialize_parameters)
-hooks["script_post_cleanup"]:register("(1) post cleanup for NornsLib parameter extension",
-  _finalize_parameters)
-
 
 -----------------------------------------------------------------------------------------
 -------------------- Have Option parameter store string instead of index ----------------
@@ -472,39 +435,33 @@ hooks["script_post_cleanup"]:register("(1) post cleanup for NornsLib parameter e
 
 local option = require 'core/params/option'
 
--- Remember the original get() function by adding it to the Option class
-if option.get ~= option._original_get_function then
-  option._original_get_function = option.get
-end  
-
 -- Overriding get() so that it instead returns string(). This way when writing preset
--- get the value instead of the index.
-function option:get()
+-- get the value instead of the index. Since this changes the preset files for Options 
+-- to have values instead of indexes need to restore the original get() function via the
+-- finalizing hook when exiting the script 
+local function modified_option_get(self)
   -- If the parameter is not to be saved then it is a special system param like 
   -- "clock_source". In this case, or if tweaking encoders or keys in parameter 
   -- editor menu, should return the usual index value.
   if not self.save or params.in_param_edit_menu() then 
     return option._original_get_function(self)
   end
-  
+
+  -- Return the value string (instead of the index)
   str = self:string()
-  log.debug("In modified Option:get() for option id="..self.id.." return value="..str)
+  log.debug("Using nornsLib.modified_option_get() to get Option "..self.name.." str="..str)
   return str
 end
 
 
--- Remember the original set() function by adding it to the Option class
-if option.set ~= option._original_set_function then
-  option._original_set_function = option.set
-end  
-
 --- Overriding set() from core/params/option.lua so that can take a string value or 
 -- an integer value. Used when reading presets. This just adds functionality so don't 
 -- need to restore the original function at the end. Since this is an augmentation to
--- the original set() don't need to restore the original function when finalizing.
--- @tparam str
+-- the original set() don't truly need to restore the original function when finalizing,
+-- but doing so for consistency.
+-- @tparam str can be value as a string or index
 -- @tparam silent if true then won't bang the parameter
-function option:set(str, silent)
+local function modified_option_set(self, str, silent)
   -- Convert str to index
   local index = tonumber(str)
   -- If str is not an integer so determine the index of the str in the Option
@@ -518,9 +475,75 @@ function option:set(str, silent)
     end
   end
   
+  log.debug("Using nornsLib.modified_option_set() to set Option "..self.name.." to index="..index.." str="..str)
+  
   -- Call original set function using index
   option._original_set_function(self, index, silent)
 end
 
+-------------------------------------------------------------------------------------------
+------------------------------- pre-init and finalize hooks -------------------------------
+-------------------------------------------------------------------------------------------
 
+-- Will be called by pre_init hook when script starts up.
+-- Sets the parameter functions to modified versions, but remembers the originals.
+local function initialize_parameters()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  _norns._original_key_function = _norns.key
+  _norns.key = modified_norns_key
+  
+  params_menu._original_params_menu_parameter_redraw = params_menu.redraw
+  params_menu.redraw = modified_params_menu_redraw
+  
+  option._original_get_function = option.get
+  option.get = modified_option_get
+  
+  option._original_set_function = option.set
+  option.set = modified_option_set
+end
+
+
+-- Will be called by script_post_cleanup hook when script is being shut down.
+-- Restores the parameter functions to their originals
+local function finalize_parameters()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+  
+  -- Restoe original functions
+  _norns.key = _norns._original_key_function
+
+  -- nil ptr so thitey will be garbage collected and then not appear in _norns anymore
+  _norns._original_key_function = nil
+  
+  -- Restoe original functions
+  params_menu.redraw = params_menu._original_params_menu_parameter_redraw
+  
+  -- nil ptr so it will be garbage collected and then not appear in _norns anymore
+  params_menu._original_params_menu_parameter_redraw = nil
+  
+  -- Restoe original functions
+  option.get = option._original_get_function
+  option.set = option._original_set_function
+  
+  -- nil them so they will be garbage collected and then not appear in option anymore
+  option._original_get_function = nil
+  option._original_set_function = nil
+end
+
+
+-- Configure the pre-init and a post-cleanup hooks in order to modify system 
+-- code before init() and then to reset the code while doing cleanup.
+-- Note: the numbers in the names are so that the hooks for parameterExt and
+-- psetExt are called in proper order, which is done alphabetically. Needed to
+-- make sure that since params_menu.redraw() is modified in both, that the
+-- init order is the oppose of the finalize order.
+local hooks = require 'core/hook'
+hooks["script_pre_init"]:register("(2) pre init for NornsLib parameter extension", 
+  initialize_parameters)
+hooks["script_post_cleanup"]:register("(1) post cleanup for NornsLib parameter extension",
+  finalize_parameters)
+
+-- Return the local ParameterExt so this can be used as a module
 return ParameterExt

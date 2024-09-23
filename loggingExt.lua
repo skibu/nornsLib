@@ -125,8 +125,14 @@ local function _new_print(obj)
 end
 
 
+-- Globally accessible function for flushing log file
+function LoggingExt.flush_logfile()
+  LoggingExt.logfile:flush()
+end
+
+
 -- This function will be called before init() is done via magic of hooks.
-local function _initialize_logger()
+local function initialize_logger()
   -- If NornsLib not enabled for this app then don't do anything
   if not nornsLib.enabled() then return end
   
@@ -149,7 +155,7 @@ end
 
 -- Will be called by script_post_cleanup hook when script is being shut down.
 -- Closes the log file and also restore the print function back to its original.
-local function _finalize_logger()
+local function finalize_logger()
   -- If NornsLib not enabled for this app then don't do anything
   if not nornsLib.enabled() then return end
 
@@ -168,20 +174,14 @@ local function _finalize_logger()
 end
 
 
--- Globally accessible function for flushing log file
-function LoggingExt.flush_logfile()
-  LoggingExt.logfile:flush()
-end
-
-
 -- Configure the module hooks so that any extension can have a pre-init and a post-cleanup
 -- hook in order to modify system code before init() and then to reset the code while
 -- doing cleanup.
 local hooks = require 'core/hook'
 hooks["script_pre_init"]:register("pre init for NornsLib logging extension", 
-  _initialize_logger)
+  initialize_logger)
 hooks["script_post_cleanup"]:register("post cleanup for NornsLib logging extension",
-  _finalize_logger)
+  finalize_logger)
 
 
 -- Allow script to access this class

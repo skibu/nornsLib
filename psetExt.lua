@@ -423,9 +423,9 @@ local function modified_enc_function(n, d)
 end
 
 
--- Will be called by script_post_cleanup hook when script is being shut down.
--- Restores the pset functions to their originals
-local function _initialize_pset()
+-- Will be called by pre_init hook when script starts up.
+-- Sets the pset functions to modified versions, but remembers the originals.
+local function initialize_pset()
   -- If NornsLib not enabled for this app then don't do anything
   if not nornsLib.enabled() then return end
   
@@ -442,15 +442,19 @@ end
 
 -- Will be called by script_post_cleanup hook when script is being shut down.
 -- Restores the pset functions to their originals
-local function _finalize_pset()
+local function finalize_pset()
   -- If NornsLib not enabled for this app then don't do anything
   if not nornsLib.enabled() then return end
   
+  -- Restore the function ppointers to their original values
   params_menu.enc = params_menu._original_enc_function
-  
   params_menu.key = params_menu._original_key_function
-  
   params_menu.redraw = params_menu._original_redraw_function
+  
+  -- nil these so it will be garbage collected and then not appear in _norns anymore
+ params_menu._original_enc_function = nil
+ params_menu._original_key_function = nil
+ params_menu._original_redraw_function = nil
 end
 
 
@@ -462,8 +466,8 @@ end
 -- init order is the oppose of the finalize order.
 local hooks = require 'core/hook'
 hooks["script_pre_init"]:register("(1) pre init for NornsLib pset extension", 
-  _initialize_pset)
+  initialize_pset)
 hooks["script_post_cleanup"]:register("(2) post cleanup for NornsLib pset extension",
-  _finalize_pset)
+  finalize_pset)
 
 return PsetExt
