@@ -33,7 +33,8 @@ te.available_chars = enter_key..backspace_key..
 
 
 -- Called whenever any key is pressed or released. For handling just special
--- keys ESC, ENTER, and BACKSPACE.
+-- keys ESC, ENTER, and BACKSPACE. Code copied from lib/textentry.lua since it
+-- is a local and the original is not accessible here.
 local function keycode(c, value)
   log.debug("In keycode() c="..c.." value="..value)
   if keyboard.state.ESC then
@@ -59,7 +60,8 @@ local function keycode(c, value)
 end
 
 
--- Called when regular character is typed
+-- Called when regular character is typed. Code copied from lib/textentry.lua since it
+-- is a local and the original is not accessible here.
 local function keychar(a)
   log.debug("In keychar() a="..a)
   
@@ -143,6 +145,7 @@ end
 -- Called when user done with text entry. Calls the callback that was setup.
 -- The differene of this function from the original source code is that it
 -- also restores font info since the modified text entry mucks around with the font. 
+-- Original code is in lua/lib/textentry.lua
 local function modified_exit_function()
   te_kbd_cb.code = nil
   te_kbd_cb.char = nil
@@ -170,6 +173,7 @@ local function modified_exit_function()
     log.debug("Textentry exiting and calling callback for text="..te.txt)
     te.callback(te.txt)
   else 
+    log.debug("Textentry exiting and calling callback with text=nil to indicate escape instead of save")
     te.callback(nil) 
   end
 end
@@ -179,6 +183,10 @@ end
 local function modified_key_function(n,z)
   -- If key2 pressed then done. Exit and go back to previous screen
   if n==2 and z==1 then
+    -- Setting txt to nil so that nil passed to callback, so that
+    -- system will know that the data should not be saved.
+    te.txt = nil
+    
     te.exit()
     return
   end
