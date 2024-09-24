@@ -377,7 +377,7 @@ end
 
 -- Overriding the key() function in lua/core/menu.lua to better handle key1 inputs.
 local function modified_norns_key(n, z)
-  log.debug("In overriden _norns.key() and n="..n.. " z="..z)
+  log.debug("In overridden _norns.key() and n="..n.. " z="..z)
   -- key 1 detect for short press
   if n == 1 then
     if z == 1 then
