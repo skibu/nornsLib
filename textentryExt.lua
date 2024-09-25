@@ -249,14 +249,14 @@ local function modified_redraw_function()
   screen.move(0, 32)
   local label = "Name: "
   screen.text(label)
+  local label_width = screen.text_untrimmed_extents(label)
   
   -- Draw the current text string
-  screen.font_face(4) -- Roboto Regular Light (Thin lower case chars were hard to read)
-  screen.aa(0)
-  local label_width = screen.text_untrimmed_extents(label)
-  screen.move(label_width, 32)
-  screen.font_size(10)
+  screen.font_face(5) -- Roboto Regular (Thin lower case chars were hard to read)
+  screen.aa(1)  -- turn on for font size 12 or greater
+  screen.font_size(12)
   screen.level(15)
+  screen.move(label_width, 32)
   screen.text(te.txt)
   
   -- Draw cursor at end to show where text will be added
