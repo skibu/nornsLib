@@ -1,9 +1,13 @@
 -- For making the PSET menu screen easier to use. 
+-- Mostly affecting the code in core/menu/params.lua
 
 print("Loading nornsLib/psetExt.lua")
 
--- load the nornsLib  mod to setup system hooks
+-- load the nornsLibmod to setup system hooks
 local nornsLib = require "nornsLib/nornsLib"
+
+-- Since using some nornsLib utils
+require "nornsLib/utilExt"
 
 -- Get access to the PARAMS menu class. Also use the name "m" since that is what
 -- is used in the original code.
@@ -33,37 +37,68 @@ local mPSETDELETE = 3
 -- pset is a local there.
 m.pset = {}
 
--- Duplication of the original code, which was needed to be done since it was
--- declared local.
+
+-- Need to define function before it is used in pset_list()
+local write_pset_last
+
+-- Duplication of the original code incore/menu/params.lua, which was needed to be done 
+-- since it was declared local. 
+-- @tparam results: string containing list of filenames, separated by newlines.
 local function pset_list(results)
+  log.debug("In pset_list and results="..results)
+  
+  -- Reset m.pset so can start from scratch
   m.pset = {}
-  m.ps_n = 0
- 
+  
+  -- Index in presets list of currently unused preset. 
+  -- In original code was called m.ps_n. Setting it to 1 in case there are no presets 
+  -- currently configured.
+  m.ps_index_of_unused = 1
+  
+  -- Add the preset file names to table t
   local t = {}
   for filename in results:gmatch("[^\r\n]+") do
-    table.insert(t,filename)
+    table.insert(t, filename)
   end
 
+  -- Read each file and add info to m.pset. m.pset is a table
+  -- keyed by n (preset number) and each value contains {file, name}
+  -- where file is name of the preset file and name is the name stored
+  -- as a comment at the top of the preset file. The keys might not be
+  -- contiguous. 
   for _,file in pairs(t) do
     local n = tonumber(file:match"(%d+).pset$")
     if not n then n=1 end
-    --print(file,n)
     local name = norns.state.shortname
-    local f = io.open(file,"r")
+    local f = io.open(file, "r")
     io.input(file)
     local line = io.read("*line")
     if util.string_starts(line, "-- ") then
-      name = string.sub(line,4,-1)
+      name = string.sub(line, 4, -1)
     end
     io.close(f)
-    m.pset[n] = {file=file,name=name}
-    m.ps_n = math.max(n, m.ps_n)
+    m.pset[n] = {file=file, name=name}
+    
+    -- If m.ps_index_of_unused was set to this index that is now taken, increment it
+    if n == m.ps_index_of_unused then 
+      m.ps_index_of_unused = m.ps_index_of_unused + 1
+    end
+    
+    log.debug("Loaded in info for preset name="..name.." index="..n..
+      " file="..util.get_filename(file))
   end
   
-  m.ps_n = m.ps_n + 1
+  -- m.ps_pos indicates which is the currently selected preset. Set to point to the
+  -- last one worked with so that when return to the PSET page it will show the 
+  -- proper reset, the last one the user used. But don't set it beyond valid setting,
+  -- since the ps_last value read from the file might not actually match the preset
+  -- files.
+  m.ps_last = util.clamp(m.ps_last, 1, util.get_table_size(m.pset) + 1)
+  write_pset_last(m.ps_last)
+  m.ps_pos = m.ps_last
   
-  -- Set ps_pos to point to first pset, if there is one
-  m.ps_pos = #m.pset >= 1 and 1 or 0
+  log.debug("Created presets list with ".. util.get_table_size(m.pset) ..
+    " stored presets and m.ps_index_of_unused=" ..m.ps_index_of_unused)
   
   _menu.redraw()
 end
@@ -74,20 +109,25 @@ end
 -- it is a local there and it sets the pset local. This function is not made local
 -- here so that it can be accessed by parameterExt.lua
 local function init_pset()
-  log.debug("psetExt scanning all psets...")
+  log.debug("psetExt scanning info for all presets...")
   norns.system_cmd('ls -1 '..norns.state.data..norns.state.shortname..'*.pset | sort', 
     pset_list)
 end
 
 
--- Deletes the current pset specified by m.ps_pos. This was not actually from 
--- lua/menu/params.lua, but should have been. Note: in params.lua was using
+-- Deletes the current pset specified by m.ps_pos. This was not a separate function 
+-- from lua/menu/params.lua, but should have been. Note: in params.lua was using
 -- zero indexed ps_pos but here using 1 based ps_pos for consistency with lua.
 local function delete_pset(ps_pos)
   -- Delete the file
-  params:delete(m.pset[ps_pos].file,
+  params:delete(
+    m.pset[ps_pos].file,
     m.pset[ps_pos].name,
     string.format("%02d", ps_pos))
+  
+  -- If the position being deleted is before ps_last then need to decrement ps_last
+  -- so that it still points to the same preset.
+  if ps_pos <= m.ps_last then m.ps_last = m.ps_last - 1 end
   
   init_pset()
 end
@@ -100,7 +140,8 @@ end
 -- appear to be automatically used to load pset at startup of app. Need to call
 -- params:read(norns.state.pset_last) or simply params:read() or simplest 
 -- params:default() to do that.
-local function write_pset_last(ps_pos)
+-- Need to define write_pset_last this way since it is used above before it is set
+write_pset_last = function(ps_pos)
   log.debug("In write_pset_last() and ps_pos="..ps_pos)
   local file = norns.state.data.."pset-last.txt"
   local f = io.open(file,"w")
@@ -114,12 +155,13 @@ end
 -- Need to define function before it is used in write_pset()
 local pset_save_redraw
 
--- Writes the specified param set, and also writes it as the last one. Called
+-- Writes the specified param preset, and also writes it as the last one. Called
 -- when user finishes with the textentry window.
 local function write_pset(name)
   log.debug("In write_pset() and name="..tostring(name).." and m.ps_pos="..m.ps_pos)
 
-  -- Do nothing if name is nil
+  -- Do nothing if name is nil because it means user escaped from textentry 
+  -- screen by hitting Key2
   if name == nil then return end
   
   -- Original code uses the secret params.name, the name of the preset, if name is empty string
@@ -130,7 +172,7 @@ local function write_pset(name)
   
   -- Remember that the past preset used is ps_pos, and then store that info in the pset_last file
   m.ps_last = m.ps_pos
-  write_pset_last(m.ps_pos) -- save last pset loaded
+  write_pset_last(m.ps_last) -- save last pset loaded
   
   -- since change was made need to reload param sets
   init_pset()
@@ -143,10 +185,12 @@ local function write_pset(name)
 end
 
 
--- This function didn't exist in params.lua but it should have
+-- Load the preset with with specied index ps_pos. This function didn't exist 
+-- in params.lua but it should have. 
+-- @tparam ps_pos: the position of the preset in the list of presets (not the index into pset[])
 local function load_pset(ps_pos)
-  if ps_pos <= #m.pset then
-    log.debug("Loading param set #"..ps_pos)
+  if ps_pos <= util.get_table_size(m.pset) then
+    log.debug("Loading preset the #"..ps_pos.." element in list")
     params:read(ps_pos)
     m.ps_last = ps_pos
     write_pset_last(ps_pos) -- save last pset loaded
@@ -155,19 +199,24 @@ end
 
 -------------------- Functions being overwritten to specially handle PSET Menu --------------
 
--- Returns displayable name of the specified PSET
-local function get_pset_name(index)
-  if index == 0 then return "(None specified)" end
-  
+-- Returns displayable name of the specified preset/PSET. 
+-- Note: the index might refer to a yet unused preset, which would
+-- not have a true name.
+local function get_preset_name(index)
   -- Determine name to be displayed
   local name
-  if index <= #m.pset and m.pset[index].name ~= nill then
+  if m.pset[index] ~= nil then
     name = m.pset[index].name
   else
-    name = "(unnamed)"
+    name = "(not yet saved)"
   end  
   
-  return index..") " .. name
+  -- If indicator is the last one used then mark it with an asterisk.
+  -- "\u{2009}" is a half space, which takes up as much as the asterisk.
+  local last_one_used_indicator = (m.ps_pos == m.ps_last and "*" or "\u{2009}")
+  
+  -- Return the full name of the preset to display
+  return last_one_used_indicator .. index.."-" .. name
 end
 
 
@@ -176,21 +225,21 @@ local function pset_menu_redraw()
   screen.clear()
   
   -- Header for the menu
-  screen.level(4)
+  screen.level(util.levels.HEADER)
   screen.move(0,10)
   screen.text("Presets Storage (PSET)")
   
   -- Display the current parameter set. First display the label
   local top = 24
   screen.move(0, top)
-  screen.level(9)
-  local pset_label = "Preset: "
+  screen.level(util.levels.LABEL)
+  local pset_label = "Preset:"
   screen.text(pset_label)
   
-  -- Display the selected preset
+  -- Display the currently selected preset from the array m.pset
   screen.move(screen.text_untrimmed_extents(pset_label), top)
-  screen.level(15)
-  local pset_name = (m.ps_pos == m.ps_last and "*" or "") ..get_pset_name(m.ps_pos)
+  screen.level(util.levels.HIGHLIGHT)
+  local pset_name = get_preset_name(m.ps_pos)
   screen.text(pset_name)
 
   -- Draw separator since the param set selector and the actions are such different things
@@ -201,20 +250,44 @@ local function pset_menu_redraw()
   screen.line(70, top+6)
   screen.stroke()
   
-  -- Draw PSET menu actions
+  -- Draw preset/PSET menu actions
+  
+  -- Display "Save with Name >" option
+  -- Highlighth if selected with level HIGHLIGHT, otherwise use just level UNHIGHLIGHT
+  local level = (m.ps_action == 1) and util.levels.HIGHLIGHT or util.levels.UNHIGHLIGHT
   screen.move(0, top+15)
-  local v = (m.ps_action == 1) and 15 or 4
-  screen.level(v)
+  screen.level(level)
   screen.text("Save with Name >")
   
+  -- Display "Load >" option.
+  -- Highlight with level 15 if selected and enabled. If not enabled use
+  -- just level 5. If not even selected then use dim level 4.
+  local load_delete_enabled = m.ps_pos <= util.get_table_size(m.pset)
+  if m.ps_action == 2 then
+    if load_delete_enabled then
+      level = util.levels.HIGHLIGHT
+    else
+      level = util.levels.SELECTED_BUT_NOT_ENABLED
+    end
+  else
+    level = util.levels.UNHIGHLIGHT
+  end
   screen.move(0, top+25)
-  v = (m.ps_action == 2 and m.ps_pos <= #m.pset) and 15 or 4
-  screen.level(v)
+  screen.level(level)
   screen.text("Load >")
   
+  -- Display "Delete >" option
+  if m.ps_action == 3 then
+    if load_delete_enabled then
+      level = util.levels.HIGHLIGHT
+    else
+      level = util.levels.SELECTED_BUT_NOT_ENABLED
+    end
+  else
+    level = util.levels.UNHIGHLIGHT
+  end
   screen.move(0, top+35)
-  v = (m.ps_action == 3 and m.ps_pos <= #m.pset) and 15 or 4
-  screen.level(v)
+  screen.level(level)
   screen.text("Delete >")
   
   screen.update()
@@ -226,10 +299,10 @@ local function pset_delete_menu_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(15)
-  screen.text_center("Delete "..get_pset_name(m.ps_pos).." ?")
+  screen.level(util.levels.HIGHLIGHT)
+  screen.text_center("Delete "..get_preset_name(m.ps_pos).." ?")
 
-  screen.level(2)
+  screen.level(util.levels.HELP)
   screen.move(63, 61)
   screen.text_center("Key3 for yes, Key2 for no")
   
@@ -242,7 +315,7 @@ pset_save_redraw = function()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(15)
+  screen.level(util.levels.HIGHLIGHT)
   screen.text_center("Saving...")
   
   screen.update()
@@ -255,7 +328,7 @@ local function pset_load_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(15)
+  screen.level(util.levels.HIGHLIGHT)
   screen.text_center("Loading...")
   
   screen.update()
@@ -270,7 +343,7 @@ local function pset_delete_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(15)
+  screen.level(util.levels.HIGHLIGHT)
   screen.text_center("Deleting...")
   
   screen.update()
@@ -304,14 +377,6 @@ function PsetExt.jump_to_pset_screen()
 end
 
 
-----------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------
-
--- params_menu is the menu that contains the params. This is the one that needs to have 
--- function ptrs modified. Therefore using hooks to store the original functions at init
--- and then restore them back to the original when finalizing script.
-
 local function modified_redraw_function()
   -- If drawing the PSET menu then use the new PSET functions
   if params_menu.mode == mPSET then
@@ -328,11 +393,11 @@ end
 
 
 local function modified_key_function(n, z)
+  -- Purely for debugging
   if z == 1 then
-    log.debug("In modified params_menu.key and n="..n.." z="..z)
-    --json.print(_menu.m.PARAMS)
-    log.debug("m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
-      " m.pos="..m.pos)
+    log.debug("In modified params_menu.key and n="..n.." z="..z..
+        " m.mode="..m.mode.." m.mode_prev="..m.mode_prev.." m.mode_pos="..m.mode_pos..
+        " m.pos="..m.pos)
   end
   
   -- If on PSET menu page then handle specially, as long as not key1 press (since key1
@@ -372,24 +437,25 @@ local function modified_key_function(n, z)
         -- ps_action is which command selected in PSET menu: SAVE, LOAD, or DELETE
         if params_menu.ps_action == 1 then
           -- SAVE action
-          log.debug("K3 hit for Save & Name option")
-          local initial_name = m.ps_pos <= #m.pset and m.pset[m.ps_pos].name or ""
+          log.debug("K3 hit for Save & Name option m.ps_pos="..m.ps_pos..
+            " util.get_table_size(m.pset)="..util.get_table_size(m.pset))
+          local initial_name = m.pset[m.ps_pos] ~= nill and m.pset[m.ps_pos].name or ""
           textentry.enter(write_pset, initial_name, "Name the Preset #"..m.ps_pos.." and Save")
-        elseif params_menu.ps_action == 2 and m.ps_pos <= #m.pset then
+        elseif params_menu.ps_action == 2 and m.pset[m.ps_pos] ~= nill then
           -- LOAD action
           log.debug("K3 hit for Load option")
           load_pset(m.ps_pos)
           pset_load_redraw()
-        elseif params_menu.ps_action == 3 and m.ps_pos <= #m.pset then
+        elseif params_menu.ps_action == 3 and m.pset[m.ps_pos] ~= nill then
           -- DELETE action
           log.debug("K3 hit for Delete option so going to PSETDELETE menu screen")
           params_menu.mode = mPSETDELETE
         end
-
       end
+      
       m.redraw()
       return
-    end -- of n==3
+    end -- of n==2 or n==3
   else  
     -- The original key() function doesn't set mode_prev. Therefore set it here
     -- so that if changing to another menu will know where came from.
@@ -402,17 +468,20 @@ local function modified_key_function(n, z)
     log.debug("Calling original menu key function")
     params_menu._original_key_function(n, z)
   end
-end  
+end 
 
 
 -- For when encoder changed
 local function modified_enc_function(n, d)
   if m.mode == mPSET then
-    -- On PSET menu screen so handle selection of action or pset
+    -- On preset/PSET menu screen so handle selection of action or pset
     if n==2 then
+      -- Highlight the selected action Save, Load, or Delete
       m.ps_action = util.clamp(m.ps_action + d, 1, 3)
     elseif n==3 then
-      m.ps_pos = util.clamp(m.ps_pos + d, 1, m.ps_n)
+      -- Show the selected preset. The max vale is a bit tricky because it needs to
+      -- be the number of actual presets in m.pset, plus 1 for the yet unsaved one. 
+      m.ps_pos = util.clamp(m.ps_pos + d, 1, util.get_table_size(m.pset) + 1)
     end
     _menu.redraw()
     return
@@ -422,6 +491,14 @@ local function modified_enc_function(n, d)
   params_menu._original_enc_function(n, d)
 end
 
+
+----------------------------------------------------------------------------------
+--------------------------- Hooks to handle pre-init and finalize ----------------
+----------------------------------------------------------------------------------
+
+-- params_menu is the menu that contains the params. This is the one that needs to have 
+-- function ptrs modified. Therefore using hooks to store the original functions at init
+-- and then restore them back to the original when finalizing script.
 
 -- Will be called by pre_init hook when script starts up.
 -- Sets the pset functions to modified versions, but remembers the originals.
