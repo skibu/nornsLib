@@ -123,6 +123,12 @@ And lastly, screen.clear() is overriden to deal with a bug when writing an image
 
 # `require "nornsLib/utilExt"`
 
+### util.get_table_size(tbl)
+Returns size of table. Intended to be used for arrays that are sparse, where 
+every index isn't defined. For such tables #tbl only returns number of elements
+until a nil is found, which of course won't return the true number of elements 
+if it is only sparsely populated.
+
 ### util.sleep(seconds)
 Sleeps specified fraction number of seconds. Implemented by doing a system call.
 Note that this will lock out the UI for the specified amount of time, so should

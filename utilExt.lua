@@ -5,6 +5,30 @@ print("Loading nornsLib/utilExt.lua")
 -- For logging
 local log = require "nornsLib/loggingExt"
 
+
+-- Named levels for when drawing text
+util.levels = {
+  HIGHLIGHT = 15,
+  UNHIGHLIGHT = 4,
+  SELECTED_BUT_NOT_ENABLED = 6,
+  LABEL = 9,
+  HEADER = 4,
+  HELP = 2
+}
+
+-- Returns size of table. Intended to be used for arrays that are sparse, where 
+-- every index isn't defined. For such tables #tbl only returns number of elements
+-- until a nil is found, which of course won't return the true number of elements 
+-- if it is only sparsely populated.
+function util.get_table_size(tbl)
+    local count = 0
+    for _, _ in pairs(tbl) do
+        count = count + 1
+    end
+    return count
+end
+
+
 -- Like os.execute() but returns the result string from the command. And different
 -- from util.os_capture() by having a more clear name, and by only filtering out
 -- last character if a newline. This means it works well for both shell commands
