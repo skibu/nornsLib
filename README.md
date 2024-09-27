@@ -114,11 +114,18 @@ string in question actually might be padded.
 There is also a new  function for determining the size of an image buffer called `screen.extents()`. One can pass in either an existing image buffer or a file name of a PNG file. This function is quite handy for if you want to do something like center a PNG image on the screen. The function is:
 * screen.extents(image_buffer) and it returns the `width, height` of the image buffer or PNG file.
 
-And there is a function for freeing an image buffer when you are done with it. Make sure you only call this once on an image buffer. Otherwise the system will likely crash.
-* screen.free(image_buffer)
-
-And lastly, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
+In addition, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
 * screen.clear() - fixes existing function
+
+And, overriding screen.draw_to() so that it can pass arguments to the function that is called.
+This makes drawing to images, controlled by args, possible. Definitely useful if one is working with image buffers.
+* function screen.draw_to(image, func, ...)
+
+And lastly, addresses a very obscure problem with screen.blend_mode(index) where if used an index of 3-Multiply or later that was getting the wrong mode 
+because 3-Saturate was inadvertantly left out of the list in screen.lua . Therefore NornsLib screen extension fixes Screen.BLEND_MODES 
+* screen.blend_mode(index) - fixes Screen.BLEND_MODES
+
+Note: originally also provided a screen.free(image) for freeing image buffer. But this was removed because image buffers are automatically garbage collected when done with them. If one ever runs out of memory due to creating large number of images, should intersperse calls to collectGarbage() so that they are garbage collected in time.
 
 
 # `require "nornsLib/utilExt"`

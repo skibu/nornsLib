@@ -2,6 +2,21 @@
 
 print("Loading nornsLib/screenExt.lua")
 
+
+--------------------------- screen.draw_to() ------------------------------
+
+-- Overriding screen.draw_to() so that it can pass arguments to func.
+-- This makes drawing to images, controlled by args, possible.
+function screen.draw_to(image, func, ...)
+  image:_context_focus()
+  local ok, result = pcall(func, ...)
+  image:_context_defocus()
+  if not ok then print(result) else return result end
+end
+
+
+--------------------------- screen.text_untrimmed_extents(str) --------------
+
 -- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
 -- the proper width of a string if the string is padded by spaces. Somewhere the string
 -- is inappropriately trimmed. This is a problem even if padding with a half space \u{2009}
@@ -130,3 +145,47 @@ if screen._original_clear_function == nil then
   screen.clear = screen_clear_modified
 end
 
+
+-------------------------- screen.blend_mode(index) ------------------
+
+-- Up to at least the September 2024 release, Screen.BLEND_MODES in screen.lua was missing
+-- ['SATURATE'] = 3. This meant that if tried using a blend mode 3 or greater one got the 
+-- wrong mode!! This was a problem whether used the name or the index. Fix is to simply 
+-- use a corrected BLEND_MODES array shown below. When this is addressed in the main Norms
+-- also need to make a change to screen.c:598 to increase upper limit by one. and change 
+-- weaver.c _screen_set_operator(lua_State *l) so that upper limit is 29.
+
+screen.BLEND_MODES = {
+  ['NONE'] = 0,
+  ['DEFAULT'] = 0,
+  ['OVER'] = 0,
+  ['XOR'] = 1,
+  ['ADD'] = 2,
+  ['SATURATE'] = 3,
+  ['MULTIPLY'] = 4,
+  ['SCREEN'] = 5,
+  ['OVERLAY'] = 6,
+  ['DARKEN'] = 7,
+  ['LIGHTEN'] = 8,
+  ['COLOR_DODGE'] = 9,
+  ['COLOR_BURN'] = 10,
+  ['HARD_LIGHT'] = 11,
+  ['SOFT_LIGHT'] = 12,
+  ['DIFFERENCE'] = 13,
+  ['EXCLUSION'] = 14,
+  ['CLEAR'] = 15,
+  ['SOURCE'] = 16,
+  ['IN'] = 17,
+  ['OUT'] = 18,
+  ['ATOP'] = 19,
+  ['DEST'] = 20,
+  ['DEST_OVER'] = 21,
+  ['DEST_IN'] = 22,
+  ['DEST_OUT'] = 23,
+  ['DEST_ATOP'] = 24,
+  ['SATURATE'] = 25,
+  ['HSL_HUE'] = 26,
+  ['HSL_SATURATION'] = 27,
+  ['HSL_COLOR'] = 28,
+  ['HSL_LUMINOSITY'] = 29,
+}
