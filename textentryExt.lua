@@ -28,8 +28,9 @@ local te = require "textentry"
 -- The characters that user can select from. First one is backspace char, 0x08
 local backspace_key = "\u{0008}"
 local enter_key = "\u{000D}"
+local space_key = "\u{2423}"
 te.available_chars = enter_key..backspace_key..
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890.,-_=+#$%*<>"
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 .,-_=+#$%*<>"
 
 
 -- Called whenever any key is pressed or released. For handling just special
@@ -259,10 +260,10 @@ local function modified_redraw_function()
   screen.move(label_width, 32)
   screen.text(te.txt)
   
-  -- Draw cursor at end to show where text will be added
+  -- Draw dim cursor at end to show where text will be added
   local text_width = screen.text_untrimmed_extents(te.txt)
   screen.move(label_width + text_width, 32)
-  screen.level(2)
+  screen.level(3)
   screen.text("_") -- The cursor
   
   -- If warning text specified then draw it below name being entered.
@@ -304,6 +305,9 @@ local function modified_redraw_function()
         -- Enter key. Display as SAVE
         screen.text("SAVE")
         needed_extra_horiz_space = needed_extra_horiz_space + 14
+      elseif ch == " " then
+        -- Space key. Display as open_box, the U shaped underbar
+        screen.text(space_key)
       else
         -- Regular character so simply draw it
         screen.text(ch)
