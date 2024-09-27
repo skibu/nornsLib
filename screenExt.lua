@@ -121,28 +121,69 @@ screen.extents = function(image_buffer_or_filename)
 end  
 
 
---------------------------- screen.clear() -------------------------------
+--------------------------- writing image buffers not synced -------------------------------
 
--- In norns version 240424 there is a bug when writing an image buffer after screen.clear()
--- is called. The screen.display_image() call is not queued and therefore can execute
--- before the screen is fully cleared, resulting in the image not be displayed correctly
--- or even at all. This is being fixed in the next release of Norns, but if you are 
--- using screen.display_image() then you will want to include this library since it
--- is a good temporary fix for the problem.
+-- In Norns version 240424 there is a bug when writing an image buffer after other event
+-- driven screen calls are made, like after screen.clear(). The problem is with C functions
+-- screen_display_image(),  screen_display_image_region(), and screen_context_set() which 
+-- is called by screen.draw_to(). These functions are not event driven, but instead
+-- happen immediately, even if there are still some drawing events in the queue. 
 --
-local function screen_clear_modified()
-  screen._original_clear_function()
-  
+-- An example is with calling screen.display_image() after screen.clear(). 
+-- screen.display_image() is not queued and therefore can execute before the screen
+-- is fully cleared, resulting in the image not be displayed correctly
+-- or even at all. 
+--
+-- To address this problem the problem functions are rewritten here to first call 
+-- screen.current_point(), which does a return trip to Cairo. Since it is event driven
+-- yet returns a value, it causes the queue of events to be processed before returning
+-- the value. This syncs up things correctly.
+--
+-- This is being fixed in future release of Norns, but if you are using 
+-- screen.display_image(), display_image_region(), or screen.draw_to() then 
+-- you will want to include this library since it is a good temporary fix for the problem.
+
+local function screen_display_image_modified(...)
   -- This line retrieves data using a queued command so will make sure that the
   -- original screen clear function has fully finished before this function returns.
   screen.current_point()
+
+  -- Call original function to do the actual work
+  screen._original_display_image_function(...)
 end
 
--- Since screen_clear_modified() calls the original screen.clear() need to make sure
--- that only change it once in order to avoid infinite recursion.
-if screen._original_clear_function == nil then
-  screen._original_clear_function = screen.clear
-  screen.clear = screen_clear_modified
+
+local function screen_display_image_region_modified(...)
+  -- This line retrieves data using a queued command so will make sure that the
+  -- original screen clear function has fully finished before this function returns.
+  screen.current_point()
+
+  -- Call original function to do the actual work
+  screen._original_display_image_region_function(...)
+end
+
+
+local function screen_draw_to_modified(...)
+  -- This line retrieves data using a queued command so will make sure that the
+  -- original screen clear function has fully finished before this function returns.
+  screen.current_point()
+
+  -- Call original function to do the actual work
+  screen._original_draw_to_function(...)
+end
+
+
+-- Since the modified functions call the original ones, need to make sure
+-- that only change them once in order to avoid infinite recursion.
+if screen._original_display_image_function == nil then
+  screen._original_display_image_function = screen.display_image
+  screen.display_image = screen_display_image_modified
+  
+  screen._original_display_image_region_function = screen.display_image_region
+  screen.display_image_region = screen_display_image_region_modified
+  
+  screen._original_draw_to_function = screen.draw_to
+  screen.draw_to = screen_draw_to_modified
 end
 
 

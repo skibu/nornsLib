@@ -92,6 +92,8 @@ Additionaly, the list of characters was changed to present the SAVE option, and 
 # `require "nornsLib/screenExt"`
 The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
 
+Note: there already is a screen.current_point() available. It just isn't in the current documentation for some reason.
+
 All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
 
 These functions are:
@@ -111,11 +113,13 @@ since they are blocking calls. Therefore this function should only be used when 
 string in question actually might be padded.
 * screen.text_untrimmed_extents(str)
 
-There is also a new  function for determining the size of an image buffer called `screen.extents()`. One can pass in either an existing image buffer or a file name of a PNG file. This function is quite handy for if you want to do something like center a PNG image on the screen. The function is:
+There is also a new function for determining the size of an image buffer called `screen.extents()`. One can pass in either an existing image buffer or a file name of a PNG file. This function is quite handy for if you want to do something like center a PNG image on the screen. The function is:
 * screen.extents(image_buffer) and it returns the `width, height` of the image buffer or PNG file.
 
-In addition, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after screen.clear() is called. The screen.display_image() call is not queued and therefore can execute before the screen is fully cleared, resulting in the image not be displayed correctly or even at all. This is being fixed in the next release of Norns, but if you are using screen.display_image() then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while.
-* screen.clear() - fixes existing function
+In addition, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after other drawing events are queue up, like screen.clear(). The screen.display_image(), screen.display_image_region(), and screen.draw_to() calls are not queued and therefore can execute before the screen is fully drawn to, resulting in the image not be displayed correctly or even at all. This is being fixed in a future release of Norns, but if you are using these image functions then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while. Using this code after Norns is fixed will still work. 
+* screen.display_image()
+* screen.display_image_region()
+* screen.draw_to()
 
 And, overriding screen.draw_to() so that it can pass arguments to the function that is called.
 This makes drawing to images, controlled by args, possible. Definitely useful if one is working with image buffers.
