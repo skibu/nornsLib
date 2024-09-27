@@ -377,6 +377,15 @@ function PsetExt.jump_to_pset_screen()
 end
 
 
+-- So that when jumping to the textentry screen for an unnamed preset, the name
+-- can be given an initial value. This way the user might not need to enter
+-- as many characters using the somewhat cumbersome textentry screen. 
+-- @tparam: func: a function that returns a string
+function PsetExt.initial_name_for_unnamed_preset(func)
+  params_menu._initial_name_for_unnamed_preset_func = func
+end
+
+
 local function modified_redraw_function()
   -- If drawing the PSET menu then use the new PSET functions
   if params_menu.mode == mPSET then
@@ -439,7 +448,18 @@ local function modified_key_function(n, z)
           -- SAVE action
           log.debug("K3 hit for Save & Name option m.ps_pos="..m.ps_pos..
             " util.get_table_size(m.pset)="..util.get_table_size(m.pset))
-          local initial_name = m.pset[m.ps_pos] ~= nill and m.pset[m.ps_pos].name or ""
+          
+          -- Determine initial_name to present to the user
+          local initial_name
+          if (m.pset[m.ps_pos] == nill or m.pset[m.ps_pos].name == "") and 
+              params_menu._initial_name_for_unnamed_preset_func ~= nill then
+            -- There is no initial name so use _initial_name_for_unnamed_preset_func()
+            initial_name = params_menu._initial_name_for_unnamed_preset_func()
+          else
+            -- Use the initial preset name
+            initial_name = m.pset[m.ps_pos] ~= nill and m.pset[m.ps_pos].name or ""
+          end
+          
           textentry.enter(write_pset, initial_name, "Name the Preset #"..m.ps_pos.." and Save")
         elseif params_menu.ps_action == 2 and m.pset[m.ps_pos] ~= nill then
           -- LOAD action
