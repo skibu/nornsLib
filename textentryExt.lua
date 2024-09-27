@@ -83,8 +83,8 @@ end
 -- Used if no check() callback specified when te.enter() is called.
 -- Warning message returned if name is longer than 15 chars.
 local function standard_check(txt)
-  if string.len(txt) > 15 then
-    return "Name too long"
+  if string.len(txt) > 25 then
+    return "Name too long?"
   else
     return nil
   end
@@ -258,11 +258,32 @@ local function modified_redraw_function()
   screen.font_size(12)
   screen.level(15)
   screen.move(label_width, 32)
-  screen.text(te.txt)
-  
+  -- Don't want to display the most important part, the new chars being entered, off
+  -- the screen and to the right. Therefore if the text is too long, cut off left
+  -- chars until it fits, and add a | char to beginning to indicate that the text
+  -- is being trimmed.
+  local cursor_width = screen.text_extents("_")
+  local bar_width = screen.text_extents("|")
+  local txt = te.txt
+  -- Loop till txt_width small enough to fit
+  txt_width = screen.text_untrimmed_extents(txt)
+  if txt_width > 128 - label_width - cursor_width - bar_width then
+    repeat
+      txt = string.sub(txt, 2)
+      txt_width = screen.text_untrimmed_extents(txt)
+    until (txt_width <= 128 - label_width - cursor_width - bar_width)
+  end
+  if txt ~= te.txt then 
+    -- Had to trim text to output preceded with "|" to indicate some text on 
+    -- left is hidden
+    txt = "|" .. txt
+    txt_width = screen.text_untrimmed_extents(txt)
+  end
+  -- Now actually output the txt
+  screen.text(txt)
+      
   -- Draw dim cursor at end to show where text will be added
-  local text_width = screen.text_untrimmed_extents(te.txt)
-  screen.move(label_width + text_width, 32)
+  screen.move(label_width + txt_width, 32)
   screen.level(3)
   screen.text("_") -- The cursor
   
