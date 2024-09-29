@@ -3,18 +3,6 @@
 print("Loading nornsLib/screenExt.lua")
 
 
---------------------------- screen.draw_to() ------------------------------
-
--- Overriding screen.draw_to() so that it can pass arguments to func.
--- This makes drawing to images, controlled by args, possible.
-function screen.draw_to(image, func, ...)
-  image:_context_focus()
-  local ok, result = pcall(func, ...)
-  image:_context_defocus()
-  if not ok then print(result) else return result end
-end
-
-
 --------------------------- screen.text_untrimmed_extents(str) --------------
 
 -- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
@@ -163,16 +151,6 @@ local function screen_display_image_region_modified(...)
 end
 
 
-local function screen_draw_to_modified(...)
-  -- This line retrieves data using a queued command so will make sure that the
-  -- original screen clear function has fully finished before this function returns.
-  screen.current_point()
-
-  -- Call original function to do the actual work
-  screen._original_draw_to_function(...)
-end
-
-
 -- Since the modified functions call the original ones, need to make sure
 -- that only change them once in order to avoid infinite recursion.
 if screen._original_display_image_function == nil then
@@ -181,9 +159,26 @@ if screen._original_display_image_function == nil then
   
   screen._original_display_image_region_function = screen.display_image_region
   screen.display_image_region = screen_display_image_region_modified
-  
-  screen._original_draw_to_function = screen.draw_to
-  screen.draw_to = screen_draw_to_modified
+end
+
+
+-- draw_to() has to be replaced completely. This is due to image:_context_focus() and
+-- image:_context_defocus() not being queue commands. Therefore need to, for now, do a
+-- call to current_point() before each one in order to synch things up.
+-- Also, overriding screen.draw_to() so that it can pass arguments to func.
+-- This makes drawing to images, controlled by args, possible.
+screen.draw_to = function(image, func, ...)
+  -- Sync up drawing before _context_focus() called
+  screen.current_point()
+   
+  image:_context_focus()
+  local ok, result = pcall(func, ...)
+
+  -- Sync up drawing before _context_defocus() called
+  screen.current_point()
+   
+  image:_context_defocus()
+  if not ok then print(result) else return result end
 end
 
 
