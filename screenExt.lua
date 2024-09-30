@@ -2,6 +2,8 @@
 
 print("Loading nornsLib/screenExt.lua")
 
+-- load the nornsLib mod to setup system hooks
+local nornsLib = require "nornsLib/nornsLib"
 
 --------------------------- screen.text_untrimmed_extents(str) --------------
 
@@ -225,3 +227,23 @@ screen.BLEND_MODES = {
   ['HSL_COLOR'] = 28,
   ['HSL_LUMINOSITY'] = 29,
 }
+
+------------------------------------ do screen.ping() at init ----------------------
+
+-- Turns out that in the Norns code a screen.ping() is only done when user interacts with 
+-- a key or an encoder. This is usually sufficient to wake up the screen if has gone asleep.
+-- But if the script is started within matron while the screen is asleep, then the screen
+-- won't be woken up! Therefore a hook is used to do a ping at startup, and thereby always
+-- make sure that the screen is awake.
+function initialize_screen()
+  -- If NornsLib not enabled for this app then don't do anything
+  if not nornsLib.enabled() then return end
+
+  log.debug("Doing screen.ping() at startup")
+  screen.ping()
+end
+
+
+local hooks = require 'core/hook'
+hooks["script_pre_init"]:register("pre init for NornsLib screen extension", 
+  initialize_screen)
