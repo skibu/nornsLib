@@ -72,7 +72,7 @@ end
 
 ----------------------- screen.aa() anti-aliasing ---------------------
 
--- Modify font_aa() so that it stores the anti-aliasing state
+-- Modification of font_aa() so that it stores the anti-aliasing state
 local function screen_aa_modified(on)
   screen._current_aa = on
   screen._original_aa_function(on)
@@ -86,12 +86,156 @@ if screen._original_aa_function == nil then
   screen.aa = screen_aa_modified
 end
 
+
 -- Extension. Returns the current anti-aliasing
 screen.current_aa = function()
   return screen._current_aa
 end
 
 
+-------------------------- screen.level() ---------------------------------
+
+-- Modification of screen.level() that stores the level. It also can accept floating 
+-- point level.
+local function screen_level_modified(level)
+  -- Be able to handle floating point level
+  level = math.floor(level + 0.5)
+  
+  screen._current_level = level
+  screen._original_level_function(level)
+end
+
+
+if screen._original_level_function == nil then
+  screen._original_level_function = screen.level
+  screen.level = screen_level_modified
+end
+
+
+-- Returns current level
+screen.current_level = function()
+  return screen._current_level
+end
+
+
+---------------------------- screen.line_width() ------------------------
+
+local function screen_line_width_modified(w)
+  screen._current_line_width = w
+  screen._original_line_width_function(w)
+end
+
+
+if screen._original_line_width_function == nil then
+  screen._original_line_width_function = screen.line_width
+  screen.line_width = screen_line_width_modified
+end
+
+
+-- Returns current level
+screen.current_line_width = function()
+  return screen._current_line_width
+end
+
+
+---------------------------- screen.line_cap() ------------------------
+
+local function screen_line_cap_modified(style)
+  screen._current_line_cap = style
+  screen._original_line_cap_function(style)
+end
+
+
+if screen._original_line_cap_function == nil then
+  screen._original_line_cap_function = screen.line_cap
+  screen.line_cap = screen_line_cap_modified
+end
+
+
+-- Returns current level
+screen.current_line_cap = function()
+  return screen._current_line_cap
+end
+
+
+---------------------------- screen.line_join() ------------------------
+
+local function screen_line_join_modified(style)
+  screen._current_line_join = style
+  screen._original_line_join_function(style)
+end
+
+
+if screen._original_line_join_function == nil then
+  screen._original_line_join_function = screen.line_join
+  screen.line_join = screen_line_join_modified
+end
+
+
+-- Returns current level
+screen.current_line_join = function()
+  return screen._current_line_join
+end
+
+
+---------------------------- screen.blend_mode() ------------------------
+
+local function screen_blend_mode_modified(style)
+  screen._current_blend_mode = style
+  screen._original_blend_mode_function(style)
+end
+
+
+if screen._original_blend_mode_function == nil then
+  screen._original_blend_mode_function = screen.blend_mode
+  screen.blend_mode = screen_blend_mode_modified
+end
+
+
+-- Returns current level
+screen.current_blend_mode = function()
+  return screen._current_blend_mode
+end
+
+
+------------------------------ storing and restoring state -----------------
+-- These functions are useful for storing and then restoring the screen state. By
+-- using them a function for drawing on the screen can easily restore the previous
+-- state. This way it is easier to have multiple separate redraw() functions.
+
+
+-- Returns current screen state as a table.
+-- Includes font_size, font_face, aa, current_point, and level.
+screen.current = function()
+  local x, y = screen.current_point()
+  
+  return {
+    font_size=screen.current_font_size(),
+    font_face=screen.current_font_face(),
+    aa=screen.current_aa(),
+    x=x,
+    y=y,
+    level=screen.current_level(),
+    line_width=screen.current_line_width(),
+    line_cap=screen.current_line_cap(),
+    line_join=screen.current_line_join(),
+    blend_mode=screen.current_blend_mode()
+  }
+end
+
+
+-- For restoring screen state using previous_state obtained using screen.current()
+screen.restorex = function(previous_state)
+  screen.font_size(previous_state.font_size)
+  screen.font_face(previous_state.font_face)
+  screen.aa(previous_state.aa)
+  screen.move(previous_state.x, previous_state.y)
+  screen.level(previous_state.level)
+  screen.line_width(previous_state.line_width)
+  screen.line_cap(previous_state.line_cap)
+  screen.line_join(previous_state.line_join)
+  screen.blend_mode(previous_state.blend_mode)
+end
 
 ------------------------ screen.extents() ----------------------------------
 
@@ -115,7 +259,7 @@ end
 
 -- In Norns version 240424 there is a bug when writing an image buffer after other event
 -- driven screen calls are made, like after screen.clear(). The problem is with C functions
--- screen_display_image(),  screen_display_image_region(), and screen_context_set() which 
+-- screen_display_image(), screen_display_image_region(), and screen_context_set() which 
 -- is called by screen.draw_to(). These functions are not event driven, but instead
 -- happen immediately, even if there are still some drawing events in the queue. 
 --
