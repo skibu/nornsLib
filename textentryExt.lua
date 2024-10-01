@@ -110,9 +110,7 @@ local function modified_enter_function(callback, default, heading, check)
   te_kbd_cb.char = keychar
   
   -- Remember original font
-  te.font_size_original = screen.current_font_size()
-  te.font_face_original = screen.current_font_face()
-  te.aa_original = screen.current_aa()
+  screen.save()
 
   if norns.menu.status() == false then
     -- Not coming from a menu screen.
@@ -164,10 +162,8 @@ local function modified_exit_function()
     norns.menu.set(te.enc_restore, te.key_restore, te.redraw_restore, te.refresh_restore)
   end
   
-  -- Restore font
-  screen.font_size(te.font_size_original)
-  screen.font_face(te.font_face_original)
-  screen.aa(te.aa_original)
+  -- Restore font and other screen parameters
+  screen.restore()
   
   -- Call the callback
   if te.txt then 

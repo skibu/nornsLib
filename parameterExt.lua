@@ -152,10 +152,10 @@ local function output_value_without_overlap(value_str, label_str)
   
   local label_width = screen.text_untrimmed_extents(label_str)
   local value_width = screen.text_untrimmed_extents(value_str)
-  local orig_font_size = screen.current_font_size()
-  local orig_font_face = screen.current_font_face()
-  local orig_aa = screen.current_aa()
   
+  -- Store current screen parameters so can restore them
+  screen.save()
+
   -- If label & value combined is too wide then adjust
   if label_width + value_width + 0 > 128 then
     -- The value text is too long. First try shortening the text if a shortener 
@@ -200,9 +200,7 @@ local function output_value_without_overlap(value_str, label_str)
   end
 
   -- If font size, face, or anti-aliasing were changed, restore them
-  if screen.current_font_size() ~= orig_font_size then screen.font_size(orig_font_size) end
-  if screen.current_font_face() ~= orig_font_face then screen.font_face(orig_font_face) end
-  if screen.current_aa() ~= orig_aa then screen.aa(orig_aa) end
+  screen.restore()
 end
 
 

@@ -90,16 +90,7 @@ The original text entry screen can be a bit cumbersome. By simply including the 
 Additionaly, the list of characters was changed to present the SAVE option, and the backspace "<-" option clearly. Also, instead of presenting the characters in ascii order, which is not intended for a UI, first lower case characters, then upper case characters, then numbers, and then just a few symbols are provided. This seems to make it easier to find desired character. Also, one doesn't have to figure out how to switch focus from the characters line to the DEL / OK line at bottom of screen since those options are now available right in the character list.
 
 # `require "nornsLib/screenExt"`
-The screen extensions library provides three functions that allow one to get current values for a font. This can be very useful if one wants to use multiple reasonably sized functions for drawing text. A higher level function might set font parameters and then call a lower level function to do more work. If the lower level function needs to change the font params then it should reset them to the original values so that the higher level function can continue to draw.
-
-Note: there already is a screen.current_point() available. It just isn't in the current documentation for some reason.
-
-All the library screen functions are in the `screen` object, so they are accessed just like all the other ones. 
-
-These functions are:
-* screen.current_font_size()
-* screen.current_font_face()
-* screen.current_aa()
+Originally included in the library a way to store and restore screen parameters. But it turns out this functionality is already provided via screen.save() and screen.restore(). These functions should simply be documented. 
 
 Also, the standard screen.text_extents() function has a notable flaw. It doesn't provide 
 the proper width of a string if the string is padded by spaces. Somewhere the string
@@ -115,6 +106,9 @@ string in question actually might be padded.
 
 There is also a new function for determining the size of an image buffer called `screen.extents()`. One can pass in either an existing image buffer or a file name of a PNG file. This function is quite handy for if you want to do something like center a PNG image on the screen. The function is:
 * screen.extents(image_buffer) and it returns the `width, height` of the image buffer or PNG file.
+
+Screen.level() was modified to accept an floating point instead of just an integer parameter. This way won't get an error if calculating the screen level and it happens to not be an integer. Most of the other Screen functions accept floating point values. level() should as well.
+* screen.level(value)
 
 In addition, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after other drawing events are queue up, like screen.clear(). The screen.display_image(), screen.display_image_region(), and screen.draw_to() calls are not queued and therefore can execute before the screen is fully drawn to, resulting in the image not be displayed correctly or even at all. This is being fixed in a future release of Norns, but if you are using these image functions then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while. Using this code after Norns is fixed will still work. 
 * screen.display_image()
