@@ -243,6 +243,7 @@ end
 -- This code copied directly from core/menu/params.lua
 local page = nil
 
+-- Create parameter page variable for regular parameter menu
 local function build_page()
   page = {}
   local i = 1
@@ -255,25 +256,46 @@ local function build_page()
 end
 
 
+-- Create parameter page variable for group submenu
+local function build_sub(sub)
+  page = {}
+  for i = 1,params:get(sub) do
+    if params:visible(i + sub) then
+      table.insert(page, i + sub)
+    end
+  end
+end
+
+
 -- For displaying the parameter list. Mostly copied directly from core/menu/params.lua, 
 -- but modified to not highlight separators since user can't change them. Also, the
 -- header modified. To be called when m.mode == mEDIT.
 local function params_list_redraw()
   screen.clear()
   
-  -- Since the original redraw() uses "m"
+  -- Since the original redraw() uses variable name "m"
   local m = params_menu
   
   -- Need to create the page local variable
-  build_page()
+  if not m.group then
+    -- The main parameter menu
+    build_page()
+  else
+    -- A group parameter submenu
+    build_sub(m.groupid)
+  end
   
+  -- Display the header
   if m.pos == 0 then
     -- Modified to display a nicer title for the menu screen
-    local title = m.group and "Parameters / " .. m.groupname or "Parameters for " .. norns.state.shortname
+    local title = m.group and "Parameters / " .. m.groupname 
+                           or "Parameters for " .. norns.state.shortname
     screen.level(4)
     screen.move(0,10)
     screen.text(title)
   end
+  
+  -- For each of the 6 lines where can display a parameter...
   for i=1,6 do
     if (i > 2 - m.pos) and (i < #page - m.pos + 3) then
       local p = page[i+m.pos-2]
