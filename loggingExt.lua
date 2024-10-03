@@ -78,17 +78,35 @@ local function debugging_info(called_by_print)
 end
 
 
+-- Takes in variable number of args, including nils, and returns concatinated string
+-- that can be output.
+local function concat_var_args(...)
+  -- Using variable number of args is complicated due to any argument can be nil.
+  -- To handle, convert the variable arguments into a packed table.
+  args_table = table.pack(...)
+
+  -- Take variable args and concat them into a single tab separated string called concatinated_args
+  local concatinated_args = ""
+  for i = 1, args_table.n do
+    local v = args_table[i]
+    concatinated_args = concatinated_args .. (i ~= 1 and "\t" or "") .. tostring(v)
+  end
+  
+  return concatinated_args
+end
+
+
 -- Does a log.tprint(), but only if debug_print_enabled() returns true.
--- Great for debugging. Parameter called_by_print should be set to non nil
--- if this function was called by another debug.print() function. This is
--- needed so that the proper function will be displayed in the message.
-function LoggingExt.debug(obj, called_by_print)
+-- Great for debugging. 
+function LoggingExt.debug(...)
   -- Don't do anything if not in debug mode
   if not debug_print_enabled() then return end
 
+  local concatinated_args = concat_var_args(...)
+    
   -- Output the info
-  LoggingExt.print("DEBUG: " .. tostring(obj)..
-    "\n            "..debugging_info(called_by_print))
+  LoggingExt.print("DEBUG: " .. concatinated_args ..
+    "\n            "..debugging_info())
 
   -- Debug statements are important and it doesn't matter if they are a bit slow. 
   -- They are for debugging! Therefore worthwhile to flush logfile so that user
@@ -98,10 +116,12 @@ end
 
 
 -- Does a log.print() but adds ERROR: and also debugging info on the next line.
-function LoggingExt.error(obj, called_by_print)
+function LoggingExt.error(...)
+  local concatinated_args = concat_var_args(...)
+    
   -- Output the info
-  LoggingExt.print("ERROR: " .. tostring(obj)..
-    "\n            "..debugging_info(called_by_print))
+  LoggingExt.print("ERROR: " .. concatinated_args ..
+    "\n            "..debugging_info())
   
   -- Errors are rare but important. Therefore worthwhile to flush logfile so that user
   -- will definitely see the error.
@@ -111,17 +131,17 @@ end
 
 -- The overriden print function that both writes to stdout but also logs it 
 -- to the logfile
-local function _new_print(obj)
-  local str = tostring(obj).."\n"
-
+local function _new_print(...)
+  local concatinated_args = concat_var_args(...)
+  
   -- Write using original print function. Could also just write to stdout
   -- but then sometimes wouldn't see the ouput until it was flushed.
   -- Apparently print() does the necessary flushing.
-  LoggingExt.original_print_function(tostring(obj))
+  LoggingExt.original_print_function(...)
   
   -- Output to the logfile. 
   -- Note: might not appear until logfile is flushed.
-  LoggingExt.logfile:write(str)  
+  LoggingExt.logfile:write(concatinated_args .. "\n")  
 end
 
 
