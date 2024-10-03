@@ -6,16 +6,6 @@ print("Loading nornsLib/utilExt.lua")
 local log = require "nornsLib/loggingExt"
 
 
--- Named levels for when drawing text
-util.levels = {
-  HIGHLIGHT = 15,
-  UNHIGHLIGHT = 4,
-  SELECTED_BUT_NOT_ENABLED = 6,
-  LABEL = 9,
-  HEADER = 4,
-  HELP = 2
-}
-
 -- Returns size of table. Intended to be used for arrays that are sparse, where 
 -- every index isn't defined. For such tables #tbl only returns number of elements
 -- until a nil is found, which of course won't return the true number of elements 

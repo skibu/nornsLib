@@ -5,6 +5,18 @@ print("Loading nornsLib/screenExt.lua")
 -- load the nornsLib mod to setup system hooks
 local nornsLib = require "nornsLib/nornsLib"
 
+------------------------------ special drawing levels -----------------
+
+-- Named levels for when drawing text
+screen.levels = {
+  HIGHLIGHT = 15,
+  UNHIGHLIGHT = 4,
+  SELECTED_BUT_NOT_ENABLED = 6,
+  LABEL = 9,
+  HEADER = 4,
+  HELP = 2
+}
+
 --------------------------- screen.text_untrimmed_extents(str) --------------
 
 -- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
