@@ -537,7 +537,7 @@ local function finalize_parameters()
   -- nil ptr so thitey will be garbage collected and then not appear in _norns anymore
   _norns._original_key_function = nil
   
-  -- Restoe original functions
+  -- Restore original functions
   params_menu.redraw = params_menu._original_params_menu_parameter_redraw
   
   -- nil ptr so it will be garbage collected and then not appear in _norns anymore
