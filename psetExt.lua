@@ -225,20 +225,20 @@ local function pset_menu_redraw()
   screen.clear()
   
   -- Header for the menu
-  screen.level(util.levels.HEADER)
+  screen.level(screen.levels.HEADER)
   screen.move(0,10)
   screen.text("Presets Storage (PSET)")
   
   -- Display the current parameter set. First display the label
   local top = 24
   screen.move(0, top)
-  screen.level(util.levels.LABEL)
+  screen.level(screen.levels.LABEL)
   local pset_label = "Preset:"
   screen.text(pset_label)
   
   -- Display the currently selected preset from the array m.pset
   screen.move(screen.text_untrimmed_extents(pset_label), top)
-  screen.level(util.levels.HIGHLIGHT)
+  screen.level(screen.levels.HIGHLIGHT)
   local pset_name = get_preset_name(m.ps_pos)
   screen.text(pset_name)
 
@@ -254,7 +254,7 @@ local function pset_menu_redraw()
   
   -- Display "Save with Name >" option
   -- Highlighth if selected with level HIGHLIGHT, otherwise use just level UNHIGHLIGHT
-  local level = (m.ps_action == 1) and util.levels.HIGHLIGHT or util.levels.UNHIGHLIGHT
+  local level = (m.ps_action == 1) and screen.levels.HIGHLIGHT or screen.levels.UNHIGHLIGHT
   screen.move(0, top+15)
   screen.level(level)
   screen.text("Save with Name >")
@@ -265,12 +265,12 @@ local function pset_menu_redraw()
   local load_delete_enabled = m.ps_pos <= util.get_table_size(m.pset)
   if m.ps_action == 2 then
     if load_delete_enabled then
-      level = util.levels.HIGHLIGHT
+      level = screen.levels.HIGHLIGHT
     else
-      level = util.levels.SELECTED_BUT_NOT_ENABLED
+      level = screen.levels.SELECTED_BUT_NOT_ENABLED
     end
   else
-    level = util.levels.UNHIGHLIGHT
+    level = screen.levels.UNHIGHLIGHT
   end
   screen.move(0, top+25)
   screen.level(level)
@@ -279,12 +279,12 @@ local function pset_menu_redraw()
   -- Display "Delete >" option
   if m.ps_action == 3 then
     if load_delete_enabled then
-      level = util.levels.HIGHLIGHT
+      level = screen.levels.HIGHLIGHT
     else
-      level = util.levels.SELECTED_BUT_NOT_ENABLED
+      level = screen.levels.SELECTED_BUT_NOT_ENABLED
     end
   else
-    level = util.levels.UNHIGHLIGHT
+    level = screen.levels.UNHIGHLIGHT
   end
   screen.move(0, top+35)
   screen.level(level)
@@ -299,10 +299,10 @@ local function pset_delete_menu_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(util.levels.HIGHLIGHT)
+  screen.level(screen.levels.HIGHLIGHT)
   screen.text_center("Delete "..get_preset_name(m.ps_pos).." ?")
 
-  screen.level(util.levels.HELP)
+  screen.level(screen.levels.HELP)
   screen.move(63, 61)
   screen.text_center("Key3 for yes, Key2 for no")
   
@@ -315,7 +315,7 @@ pset_save_redraw = function()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(util.levels.HIGHLIGHT)
+  screen.level(screen.levels.HIGHLIGHT)
   screen.text_center("Saving...")
   
   screen.update()
@@ -328,7 +328,7 @@ local function pset_load_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(util.levels.HIGHLIGHT)
+  screen.level(screen.levels.HIGHLIGHT)
   screen.text_center("Loading...")
   
   screen.update()
@@ -343,7 +343,7 @@ local function pset_delete_redraw()
   screen.clear()
   
   screen.move(63, 30)
-  screen.level(util.levels.HIGHLIGHT)
+  screen.level(screen.levels.HIGHLIGHT)
   screen.text_center("Deleting...")
   
   screen.update()
