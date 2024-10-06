@@ -151,6 +151,12 @@ function LoggingExt.flush_logfile()
 end
 
 
+-- Just a shorter namem for function flush_logfile()
+function  LoggingExt.flush()
+  LoggingExt.flush_logfile()
+end
+
+
 -- This function will be called before init() is done via magic of hooks.
 local function initialize_logger()
   -- If NornsLib not enabled for this app then don't do anything
