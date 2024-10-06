@@ -17,6 +17,10 @@ screen.levels = {
   HELP = 2
 }
 
+-- Useful constants
+screen.WIDTH = 128
+screen.HEIGHT = 64
+
 --------------------------- screen.text_untrimmed_extents(str) --------------
 
 -- The standard screen.text_extents() function has a notable flaw. It doesn't provide 
