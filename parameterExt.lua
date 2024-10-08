@@ -495,7 +495,8 @@ local function modified_option_set(self, str, silent)
     end
   end
   
-  log.debug("Using nornsLib.modified_option_set() to set Option "..self.name.." to index="..index.." str="..str)
+  log.debug("Using nornsLib.modified_option_set() to set Option "..self.name..
+    " to index="..tostring(index).." str="..tostring(str))
   
   -- Call original set function using index
   option._original_set_function(self, index, silent)
