@@ -16,6 +16,8 @@ local AudioClip = {
   loop_begin,
   -- End time of the loop.  Set via enable() and modified via encoders
   loop_end,
+  -- When audio clip is exited this callback is called to provide user adjust loop begin and end times
+  final_loop_times_callback = nil,
   -- voice1 data = {start, duration, sec_per_sample, samples, normalized_samples, largest_sample}
   data_v1 = nil,
   -- voice2 data = {start, duration, sec_per_sample, samples, normalized_samples, largest_sample}
@@ -367,6 +369,11 @@ function AudioClip.exit()
   AudioClip.voice_duration = nil
   AudioClip.graph_y_pos = nil
   
+  -- Call callback to alert main script that begin and end times might have been changed
+  if AudioClip.final_loop_times_callback ~= nil then
+    AudioClip.final_loop_times_callback(AudioClip.loop_begin, AudioClip.loop_end)
+  end
+  
   -- Call the app's redraw since exiting the audio graph screen
   redraw() 
 end
@@ -384,8 +391,9 @@ end
 -- @tparam number voice_duration length of the voice in seconds
 -- @tparam number graph_y_pos y pixel value, below which can be used for displaying audio
 -- @tparam number loop_begin Where in voice the loop begin is. If nil then will use beginning of voice
--- @tparam number loop_duration Where in voice the loop ends. If nil then will use end of voice
-function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begin, loop_duration)
+-- @tparam number loop_end Where in voice the loop ends. If nil then will use end of voice
+-- @tparam function final_loop_times_callback When audio clip is exited this callback is called to provide user adjust loop begin and end times
+function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begin, loop_end, final_loop_times_callback)
   log.debug("In AudioClip.enable() and graph_y_pos="..tostring(graph_y_pos)..
     " voice_duration="..tostring(voice_duration))
   
@@ -394,9 +402,9 @@ function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begi
   AudioClip.softcut_voices = {voice1, voice2}
   AudioClip.graph_y_pos = graph_y_pos
   AudioClip.voice_duration = voice_duration
-  AudioClip.loop_begin = loop_begin ~= nil and loop_begin or 0
-  AudioClip.loop_end = loop_duration ~= nil and (AudioClip.loop_begin + loop_duration)
-                                             or (voice_duration - AudioClip.loop_begin)
+  AudioClip.loop_begin = loop_begin or 0
+  AudioClip.loop_end = loop_end or voice_duration
+  AudioClip.final_loop_times_callback = final_loop_times_callback
   
   -- Loop the voices using proper begin and end times
   set_audio_loop_params()
