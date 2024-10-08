@@ -51,6 +51,8 @@ local default_values = {
   LEVEL_MAX = 11
 }
 
+
+-- Actually draws on the screen the audio clip.
 local function draw_audio_channel(channel_data, up)
   local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
   local y_height_per_channel = math.floor((screen.HEIGHT - AudioClip.graph_y_pos) / 2)
@@ -162,11 +164,20 @@ local function draw_audio_channel(channel_data, up)
 end
 
 
+local redrawing = false
+
 --- Does the actual drawing of the audio clip. Separate from AudioClip.redraw() in 
 -- case script wants to create other buttons in the interface. Does not do 
 -- screen.clear() nor screen.update(). Those need to be done by the custom redraw()
 -- function that draws the other UI elements on the screen.
 function AudioClip.draw_audio_graph()
+  -- Don't draw if already drawing to avoid glitches from simultaneous drawing.
+  -- Though actually, I think the real reason sometimes get glitches is because
+  -- doing to much drawing, as indicated by sometimes getting the message 
+  -- "warning: screen event Q full!"
+  if redrawing then return end
+  redrawing = true
+
   log.debug("In draw_audio_graph() and AudioClip.graph_y_pos="..AudioClip.graph_y_pos)
   
   -- debugging
@@ -209,6 +220,9 @@ function AudioClip.draw_audio_graph()
   screen.font_size(8)
   screen.aa(0)
   screen.text_center("Press Key2 to exit")
+  
+  -- Keep track of whether redrawing in order to avoid glitches from simultaneous drawing
+  redrawing = false
 end
 
 
@@ -223,11 +237,30 @@ end
 
 
 --- Called via softcut.event_phase(callback) at the update rate specified by 
--- softcut.phase_quant(rate)
+-- softcut.phase_quant(rate). Draws a graphical element on the audio clip that
+-- indicates where currently playing.
 -- @tparam number voice which voice
 -- @tparam number position the current position in the voice, in seconds
 local function new_audio_position_callback(voice, position)
   --log.print("New audio position. voice="..voice.." position="..position)
+  
+  -- Need to clear out old indicator so redraw whole window
+  redraw()
+  
+  -- Setup for drawing
+  screen.line_width(1)
+  screen.aa(0)
+  screen.level(3)
+  
+  -- Draw vertical line
+  local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
+  local x = AudioClip.LEFT_PX+1 + (position - AudioClip.loop_begin)/duration_per_pixel
+  screen.move(x, screen.HEIGHT)
+  screen.line(x, AudioClip.graph_y_pos)
+  screen.stroke()
+  
+  -- Actually make the changes visible
+  screen.update()
 end
 
 
@@ -282,17 +315,18 @@ function AudioClip.initiate_audio_data_processing(voice_duration)
   -- register callbacks that handles the resampled audio data.
   -- And then initiate the resampling
   softcut.event_render(buffer_content_processed_callback)
-  for ch=1,2 do
+  for _, voice in ipairs(AudioClip.softcut_voices) do
     local start = 0
     local max_samples = 200 * voice_duration -- 200 samples per second
-    softcut.render_buffer(ch, start, voice_duration, max_samples)
+    softcut.render_buffer(voice, start, voice_duration, max_samples)
   end
   
   -- Configure so that new_audio_position_callback() is called every update_rate
   -- seconds. This allows an indicator to be drawn that shows where in clip we are.
   local update_rate = 0.1 -- seconds
-  softcut.phase_quant(1, update_rate)
-  softcut.phase_quant(2, update_rate)
+  for _, voice in ipairs(AudioClip.softcut_voices) do
+    softcut.phase_quant(voice, update_rate)
+  end
   softcut.event_phase(new_audio_position_callback)
   softcut.poll_start_phase()
 end
@@ -378,19 +412,6 @@ end
 --- Returns true if clipAudio screen is currently enabled
 function AudioClip.enabled()
   return AudioClip.is_enabled ~= nil and AudioClip.is_enabled
-end
-
-
---- Does full drawing of the audio clip.
--- Includes doing screen.clear() at beginning and screen.update() at end.
--- If want to add other UI elements then should create own redraw function
--- that does the clear(), outputs the custom UI, calls AudioClip.draw_audio_graph(26)
--- to draw the audio graph, and then calls update().
-function AudioClip.redraw()
-  log.debug("FIXME NOT NEEDED! In AudioClip.redraw() and will call draw_audio_graph()")
-  screen.clear()
-  AudioClip.draw_audio_graph(26)
-  screen.update()
 end
 
 
