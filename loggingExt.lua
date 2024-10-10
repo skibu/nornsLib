@@ -46,7 +46,7 @@ end
 
 
 -- If should do debug printing as indicated by log.debug_print_enabled then will do so.
-local function debug_print_enabled()
+function LoggingExt.debug_enabled()
   return LoggingExt.debug_print_enabled == true 
 end
 
@@ -96,11 +96,11 @@ local function concat_var_args(...)
 end
 
 
--- Does a log.tprint(), but only if debug_print_enabled() returns true.
+-- Does a log.print(), but only if debug_enabled() returns true.
 -- Great for debugging. 
 function LoggingExt.debug(...)
   -- Don't do anything if not in debug mode
-  if not debug_print_enabled() then return end
+  if not LoggingExt.debug_enabled() then return end
 
   local concatinated_args = concat_var_args(...)
     
