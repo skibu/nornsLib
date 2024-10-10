@@ -342,15 +342,21 @@ end
 -- label and values don't overlap. 
 local function modified_params_menu_redraw()
   -- Temporarily switch to using special screen.text() function that stores the last
-  -- text written using screen.text(str)
-  original_text_func = screen.text
-  screen.text = special_screen_text
+  -- text written using screen.text(str). But to avoid infinite recursion, only do so 
+  -- if haven't already done so.
+  if screen.text ~= special_screen_text then
+    original_text_func = screen.text
+    screen.text = special_screen_text
+  end
   
   -- Temporarily switch to using special screen.text_right() function that if text too
   -- wide it draws it smaller so that it won't overlap with the label text written to
-  -- the left.
-  original_text_right_func = screen.text_right
-  screen.text_right = special_screen_text_right
+  -- the left. But to avoid infinite recursion, only do so 
+  -- if haven't already done so.
+  if screen.text_right ~= special_screen_text_right then
+    original_text_right_func = screen.text_right
+    screen.text_right = special_screen_text_right
+  end
 
   if params_menu.mode == mEDIT then
     -- Since on mEDIT screen display it using special function
