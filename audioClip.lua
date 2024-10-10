@@ -23,7 +23,7 @@ local AudioClip = {
   -- voice2 data = {start, duration, sec_per_sample, samples, normalized_samples, largest_sample}
   data_v2 = nil,
   
-  -- Following are values that can be changed by a scrip, though the default values will generally be finet
+  -- Following are values that can be changed by a script, though the default values will generally be finet
   
   -- Minimum length in seconds of the audio loop
   MIN_LOOP_DURATION,
@@ -34,7 +34,15 @@ local AudioClip = {
   -- screen level for smallest amplitude 
   LEVEL_MIN,
   -- screen level for largest amplitude
-  LEVEL_MAX
+  LEVEL_MAX,
+  -- Update rate for showing current position. In seconds
+  SHOW_POS_UPDATE_RATE,
+  -- Brightness level of the vertical lines indicating begin and end of audio loop
+  BEGIN_END_LINES_LEVEL,
+  -- For drawing position indicator
+  POSITION_LINE_LEVEL,
+  -- For drawing wider position indicator
+  POSITION_LINE_LEVEL2
 }
 
 -- At startup of script, using the pre-init hook, the values in AudioClip will be set to 
@@ -50,11 +58,21 @@ local default_values = {
   -- screen level for smallest amplitude
   LEVEL_MIN = 5,
   -- screen level for largest amplitude
-  LEVEL_MAX = 11
+  LEVEL_MAX = 11,
+  -- Update rate for showing current position. In seconds. 0.05 makes it move quite smoothly, though may be resource intense
+  SHOW_POS_UPDATE_RATE = 0.05,
+  -- Brightness level of the vertical lines indicating begin and end of audio loop
+  BEGIN_END_LINES_LEVEL = 2,
+  -- For drawing position indicator
+  POSITION_LINE_LEVEL = 3,
+  -- For drawing wider position indicator
+  POSITION_LINE_LEVEL2 = 1
 }
 
 
--- Actually draws on the screen the audio clip.
+--- Actually draws on the screen one of the channels of the audio clip.
+-- @tparam table channel_data the audio data obtrained via softcut
+-- @tparam boolean up true if should draw channel up from the center line
 local function draw_audio_channel(channel_data, up)
   local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
   local y_height_per_channel = math.floor((screen.HEIGHT - AudioClip.graph_y_pos) / 2)
@@ -62,7 +80,7 @@ local function draw_audio_channel(channel_data, up)
   screen.line_width(1)
   screen.aa(0)
   
-  log.debug("+++ In draw_audio_channel() and duration_per_pixel="..duration_per_pixel..
+  log.debug("In draw_audio_channel() and duration_per_pixel="..duration_per_pixel..
     " up_or_down="..up_or_down.." y_height_per_channel="..y_height_per_channel)
   
   -- For each vertical line (which corresponds to a time range). But start all the way 
@@ -150,7 +168,7 @@ local function draw_audio_channel(channel_data, up)
     -- The line starts just above the audio amplitude line, with a 1 pixel gap to indicate
     -- the difference.
     if line_x_cnt == 1 or line_x_cnt == AudioClip.WIDTH_PX then
-      screen.level(4)
+      screen.level(AudioClip.BEGIN_END_LINES_LEVEL)
       screen.move(x, end_of_line_y + 2*up_or_down)
       screen.line(x, y + up_or_down*y_height_per_channel)
       screen.stroke()
@@ -160,41 +178,35 @@ local function draw_audio_channel(channel_data, up)
     --log.print("=== line_x_cnt="..line_x_cnt.." max_amplitude="..string.format("%.4f", max_amplitude).." length_of_line="..string.format("%.2f", length_of_line) .." length_of_line_in_pixels="..length_of_line_in_pixels.." number_of_samples="..number_of_samples.." level_for_amplitude="..level_for_amplitude)
     --log.print("--- x="..x.." y="..y.." end_of_line_y="..end_of_line_y.." pixel_level="..string.format("%.2f", pixel_level).." pixel_x="..tostring(pixel_x).." pixel_y="..tostring(pixel_y))
     
-    -- Using a goto because Lua doesn't have a continue statement 
+    -- Using an ugly goto because Lua doesn't have a continue statement 
     ::continue::
   end
 end
 
-
-local redrawing = false
 
 --- Does the actual drawing of the audio clip. Separate from AudioClip.redraw() in 
 -- case script wants to create other buttons in the interface. Does not do 
 -- screen.clear() nor screen.update(). Those need to be done by the custom redraw()
 -- function that draws the other UI elements on the screen.
 function AudioClip.draw_audio_graph()
-  -- Don't draw if already drawing to avoid glitches from simultaneous drawing.
-  -- Though actually, I think the real reason sometimes get glitches is because
-  -- doing to much drawing, as indicated by sometimes getting the message 
-  -- "warning: screen event Q full!"
-  if redrawing then return end
-  redrawing = true
-
   log.debug("In draw_audio_graph() and AudioClip.graph_y_pos="..AudioClip.graph_y_pos)
   
-  -- debugging
-  -- data = {start, duration, sec_per_sample, samples}
+    -- data = {start, duration, sec_per_sample, samples}
   local d1 = AudioClip.data_v1
-  if d1 ~= nil then
+  if d1 ~= nil and log.debug_enabled() then
     log.debug("d1.start="..d1.start.." d1.duration="..string.format("%.2f", d1.duration)..
       " #d1.samples="..#d1.samples.." d1.largest_sample="..string.format("%.2f", d1.largest_sample))
   end
   
   local d2 = AudioClip.data_v2
-  if d2 ~= nil then
+  if d2 ~= nil and log.debug_enabled() then
     log.debug("d2.start="..d2.start.." d2.duration="..string.format("%.2f", d2.duration)..
       " #d2.samples="..#d2.samples.." d2.largest_sample="..string.format("%.2f", d2.largest_sample))
   end
+  
+  -- Since redrawing the whole audio screen the audio position marker will not have
+  -- have been drawn. It is instead drawn in new_audio_position_callback()
+  last_x_for_audio_position = nil
     
   -- Draw each channel, if have data for them
   if d1 ~= nil then draw_audio_channel(d1, true) end
@@ -209,10 +221,10 @@ function AudioClip.draw_audio_graph()
   screen.text_center(string.format("<- %.2fs ->", AudioClip.loop_end - AudioClip.loop_begin))
   
   -- Display loop begin time in lower left corner
-  screen.text_rotate (AudioClip.LEFT_PX-2, screen.HEIGHT, string.format("%.2fs", AudioClip.loop_begin), -90)
+  screen.text_rotate(AudioClip.LEFT_PX-2, screen.HEIGHT, string.format("%.2fs", AudioClip.loop_begin), -90)
 
   -- Display loop end time in lower right corner
-  screen.text_rotate (AudioClip.LEFT_PX + AudioClip.WIDTH_PX + 7, screen.HEIGHT, 
+  screen.text_rotate(AudioClip.LEFT_PX + AudioClip.WIDTH_PX + 7, screen.HEIGHT, 
     string.format("%.2fs", AudioClip.loop_end), -90)
   
   -- Add help info to bottom
@@ -222,9 +234,6 @@ function AudioClip.draw_audio_graph()
   screen.font_size(8)
   screen.aa(0)
   screen.text_center("Press Key2 to exit")
-  
-  -- Keep track of whether redrawing in order to avoid glitches from simultaneous drawing
-  redrawing = false
 end
 
 
@@ -238,31 +247,70 @@ function AudioClip.wav_file_duration(filename)
 end
 
 
+-- Keeping track of when drawing audio position so that can erase it before
+-- drawing it at its new location.
+local last_x_for_audio_position = nil
+
+
+-- For drawing a single position indicator line
+local function draw_position_indicator_line(x)
+  screen.move(x, screen.HEIGHT)
+  screen.line(x, AudioClip.graph_y_pos)
+  screen.stroke()
+end
+
+
+-- Draws the entire position indicator line
+local function draw_position_indicator(x)
+  -- Setup for drawing
+  screen.line_width(1)
+  screen.aa(0)
+  
+  -- Draw the main indicator line
+  screen.level(AudioClip.POSITION_LINE_LEVEL)
+  draw_position_indicator_line(x)
+
+  -- If adjacent lines are configured to be drawn to make indicator thicker, then draw those as well
+  if AudioClip.POSITION_LINE_LEVEL2 ~= nil and AudioClip.POSITION_LINE_LEVEL2 > 0 then
+    screen.level(AudioClip.POSITION_LINE_LEVEL2)
+    draw_position_indicator_line(x-1)
+    draw_position_indicator_line(x+1)
+  end
+end
+
+
 --- Called via softcut.event_phase(callback) at the update rate specified by 
 -- softcut.phase_quant(rate). Draws a graphical element on the audio clip that
 -- indicates where currently playing.
 -- @tparam number voice which voice
 -- @tparam number position the current position in the voice, in seconds
 local function new_audio_position_callback(voice, position)
-  --log.print("New audio position. voice="..voice.." position="..position)
+  --log.debug("New audio position. voice="..voice.." position="..position)
   
-  -- Need to clear out old indicator so redraw whole window
-  redraw()
-  
-  -- Setup for drawing
-  screen.line_width(1)
-  screen.aa(0)
-  screen.level(3)
-  
-  -- Draw vertical line
+  -- Erase old indicator if it was drawn
+  if last_x_for_audio_position ~= nil then
+    -- Use subtract mode so can just draw the position indicator again in order to erase it
+    screen.blend_mode("difference")
+
+    -- Draw the indicator at the old position in order to erase it
+    draw_position_indicator(last_x_for_audio_position)
+  end
+
+  -- Draw the position indicator at the new position
   local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
   local x = AudioClip.LEFT_PX+1 + (position - AudioClip.loop_begin)/duration_per_pixel
-  screen.move(x, screen.HEIGHT)
-  screen.line(x, AudioClip.graph_y_pos)
-  screen.stroke()
+  -- Use add mode so that can erase just by using subtract mode
+  screen.blend_mode("add")
+  draw_position_indicator(x)
+  
+  -- Remember where drew the indicator so that it can be erased later
+  last_x_for_audio_position = x
   
   -- Actually make the changes visible
   screen.update()
+  
+  -- Restore drawning mode to the standard one
+  screen.blend_mode("default")
 end
 
 
@@ -271,7 +319,7 @@ end
 -- so that the data can be used to visualize the amplitude of the audio clip.
 local function buffer_content_processed_callback(ch, start, sec_per_sample, samples)
   log.debug("In buffer_content_processed_callback() ch="..ch.." start="..start..
-    " sec_per_sample="..sec_per_sample.." #samples="..#samples)
+    " sec_per_sample="..string.format("%.6f", sec_per_sample).." #samples="..#samples)
 
   -- Want to normalize the samples so that the largest absolute value is 1.0.
   -- This way the audio graph will be as tall as possible.
@@ -325,9 +373,8 @@ function AudioClip.initiate_audio_data_processing(voice_duration)
   
   -- Configure so that new_audio_position_callback() is called every update_rate
   -- seconds. This allows an indicator to be drawn that shows where in clip we are.
-  local update_rate = 0.1 -- seconds
   for _, voice in ipairs(AudioClip.softcut_voices) do
-    softcut.phase_quant(voice, update_rate)
+    softcut.phase_quant(voice, AudioClip.SHOW_POS_UPDATE_RATE)
   end
   softcut.event_phase(new_audio_position_callback)
   softcut.poll_start_phase()
@@ -353,12 +400,14 @@ local function set_audio_loop_params()
 end
 
 
---- Called when key2 is hit by user to exit the audio clip screen
-function AudioClip.exit()
-  log.debug("Exiting clip audio UI")
-   
+-- Resets values for Audio Clip. Should be called when Audio Clip exited
+-- and at startup
+local function reset()
   -- Stop polling of audio phase since it takes resources
   softcut.poll_stop_phase()
+  
+  -- Don't need to worry about displaying audio position anymore
+  last_x_for_audio_position = nil
   
   -- Mark as disabled
   AudioClip.disable()
@@ -368,6 +417,15 @@ function AudioClip.exit()
   AudioClip.data_v2 = nil
   AudioClip.voice_duration = nil
   AudioClip.graph_y_pos = nil
+end
+
+
+--- Called when key2 is hit by user to exit the audio clip screen
+function AudioClip.exit()
+  log.debug("Exiting clip audio UI")
+  
+  -- Reset params for Audio Clip 
+  reset()
   
   -- Call callback to alert main script that begin and end times might have been changed
   if AudioClip.final_loop_times_callback ~= nil then
@@ -491,9 +549,13 @@ end
 -- the parameters then they will be reset to their default values before the script uses the
 -- values.
 local function initialize_audio_clip()
+  -- Copy all elements from default_values into AudioClip table
   for i, v in pairs(default_values) do
     AudioClip[i] = v
   end
+  
+  -- Need to disable audio clip in case the last script run had it enabled
+  reset()
 end
 
 
