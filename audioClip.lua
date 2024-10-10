@@ -402,7 +402,7 @@ end
 
 -- Resets values for Audio Clip. Should be called when Audio Clip exited
 -- and at startup
-local function reset()
+function AudioClip.reset()
   -- Stop polling of audio phase since it takes resources
   softcut.poll_stop_phase()
   
@@ -425,7 +425,7 @@ function AudioClip.exit()
   log.debug("Exiting clip audio UI")
   
   -- Reset params for Audio Clip 
-  reset()
+  AudioClip.reset()
   
   -- Call callback to alert main script that begin and end times might have been changed
   if AudioClip.final_loop_times_callback ~= nil then
