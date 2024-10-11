@@ -372,9 +372,8 @@ function AudioClip.initiate_audio_data_processing(voice_duration)
   
   -- Configure so that new_audio_position_callback() is called every update_rate
   -- seconds. This allows an indicator to be drawn that shows where in clip we are.
-  for _, voice in ipairs(AudioClip.softcut_voices) do
-    softcut.phase_quant(voice, AudioClip.SHOW_POS_UPDATE_RATE)
-  end
+  -- Only need to do this for one ofo the voices
+  softcut.phase_quant(AudioClip.softcut_voices[1], AudioClip.SHOW_POS_UPDATE_RATE)
   softcut.event_phase(new_audio_position_callback)
   softcut.poll_start_phase()
 end
