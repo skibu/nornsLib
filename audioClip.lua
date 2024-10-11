@@ -65,10 +65,16 @@ local default_values = {
   BEGIN_END_LINES_LEVEL = 2,
   -- For drawing position indicator
   POSITION_LINE_LEVEL = 3,
-  -- For drawing wider position indicator
-  POSITION_LINE_LEVEL2 = 1
+  -- For drawing wider position indicator. A zero level means it won't be drawn at all
+  POSITION_LINE_LEVEL2 = 0
 }
 
+
+-- Keeping track of when drawing audio position so that can erase it before
+-- drawing it at its new location.
+local last_x_for_audio_position = nil
+
+-------------------------------------------------------------------------------
 
 --- Actually draws on the screen one of the channels of the audio clip.
 -- @tparam table channel_data the audio data obtrained via softcut
@@ -101,11 +107,9 @@ local function draw_audio_channel(channel_data, up)
     
     -- If sample indexes are beyond the range of the data then cannot draw amplitude line
     if sample_index_end < 1 then
-      log.debug("For line_x_cnt="..line_x_cnt.." there is no sample data so not drawing amplitude line")
       goto continue
     end
     if sample_index_begin > #channel_data.normalized_samples then 
-      log.debug("For line_x_cnt="..line_x_cnt.." there is no sample data so finished drawing amplitude lines")
       break 
     end
     
@@ -247,11 +251,6 @@ function AudioClip.wav_file_duration(filename)
 end
 
 
--- Keeping track of when drawing audio position so that can erase it before
--- drawing it at its new location.
-local last_x_for_audio_position = nil
-
-
 -- For drawing a single position indicator line
 local function draw_position_indicator_line(x)
   screen.move(x, screen.HEIGHT)
@@ -285,7 +284,7 @@ end
 -- @tparam number voice which voice
 -- @tparam number position the current position in the voice, in seconds
 local function new_audio_position_callback(voice, position)
-  --log.debug("New audio position. voice="..voice.." position="..position)
+  --log.print("New audio position. voice="..voice.." position="..position)
   
   -- Erase old indicator if it was drawn
   if last_x_for_audio_position ~= nil then
@@ -308,7 +307,7 @@ local function new_audio_position_callback(voice, position)
   
   -- Actually make the changes visible
   screen.update()
-  
+
   -- Restore drawning mode to the standard one
   screen.blend_mode("default")
 end
