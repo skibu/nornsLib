@@ -197,7 +197,7 @@ end
 -- screen.clear() nor screen.update(). Those need to be done by the custom redraw()
 -- function that draws the other UI elements on the screen.
 function AudioClip.draw_audio_graph()
-  log.debug("In draw_audio_graph() and AudioClip.graph_y_pos="..AudioClip.graph_y_pos)
+  log.debug("In draw_audio_graph()")
   
     -- data = {start, duration, sec_per_sample, samples}
   local d1 = AudioClip.data_v1
@@ -225,13 +225,13 @@ function AudioClip.draw_audio_graph()
   local voices_drawn = (d1 ~= nil and 1 or 0) + (d2 ~= nil and 1 or 0)
   if voices_drawn == #AudioClip.softcut_voices then 
     -- Initiate position polling now that all audio channels drawn
-    log.debug("Drew data for both voices so make sure audio position polling is running")
+    log.debug("Drew data for both voices so making sure audio position polling running")
     AudioClip.initiate_audio_position_polling()
   end
   
   -- Display details of graph, but only once all voices have been drawn. This way only do it once.
   if voices_drawn == #AudioClip.softcut_voices then
-    log.debug("============== Drew data for both voices so displaying all other details just once")
+    log.debug("Drew data for both voices so displaying all remaining details just once")
 
     -- Display the duration at top of audio display, just below the custom display area
     screen.move(screen.WIDTH/2, AudioClip.graph_y_pos + 6)
@@ -279,9 +279,6 @@ end
 
 -- Draws the entire position indicator line
 local function draw_position_indicator(x)
-  -- Not confident it is always okay to use fractional values for x, so round it to an integer
-  -- FIXME  x = math.floor(x + 0.5)
-  
   -- Setup for drawing
   screen.line_width(1)
   screen.aa(0)
@@ -309,13 +306,9 @@ local function new_audio_position_callback(voice, position)
   -- wanted to track single one. Therefore just return if voice is not the one
   -- wanted callbacks for. This is important to make sure that the position
   -- indicator is drawn properly.
-  if voice ~= AudioClip.softcut_voices[1] then
-    log.debug("new_audio_position_callback() called but for wrong voice, so ignoring")
-    return
-  end
+  if voice ~= AudioClip.softcut_voices[1] then return end
   
-  local pos = string.format("%.3f", position)
-  log.print("+++ New audio position callback. voice="..voice.." position="..pos) -- FIXME
+  --log.print("New audio position callback. voice="..voice.." position="..string.format("%.3f", position))
   
   -- Determine new x pixel location for the position indicator
   local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
@@ -323,32 +316,25 @@ local function new_audio_position_callback(voice, position)
   local x_pixel = math.floor(x + 0.5)
 
   -- If at same pixel then don't need to do anything at all so just return
-  if x_pixel == last_x_for_audio_position then 
-    log.debug("FIXME *************** x_pixel == last_x_for_audio_position so not updating pos indicator")
-    return 
-  end
+  if x_pixel == last_x_for_audio_position then return end
   
   -- Erase old indicator if it was drawn
   if last_x_for_audio_position ~= nil then
-      log.print("FIXME ------ last_x not nil so erasing old pos marker. last_x="..string.format("%.3f", last_x_for_audio_position))
     -- Use subtract mode so can just draw the position indicator again in order to erase it
     screen.blend_mode("difference")
 
     -- Draw the indicator at the old position in order to erase it
     draw_position_indicator(last_x_for_audio_position)
-  else
-    log.print("FIXME +++ last_x_for_audio_position is nil so NOT erasing old position marker")
   end
 
   -- Draw the position indicator at the new position
   -- Use add mode so that can erase just by using subtract mode
   screen.blend_mode("add")
-  log.debug("FIXME ++++++ drawing the new position marker at x="..string.format("%.3f", x_pixel))
   draw_position_indicator(x_pixel)
   
   -- Remember where drew the indicator so that it can be erased later
   last_x_for_audio_position = x_pixel
-  log.debug("FIXME +++ set last_x_for_audio_position="..string.format("%.3f", last_x_for_audio_position))
+
   -- Actually make the changes visible
   screen.update()
 
@@ -529,8 +515,8 @@ function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begi
   -- Get the raw data from softcut buffer
   AudioClip.initiate_audio_data_processing(voice_duration)
   
-  -- Call redraw to display the special audio clip screen
-  --FIXME redraw()
+  -- Call clear() and update() to clear the screen so that can then display the 
+  -- audio clip screen
   screen.clear()
   screen.update()
 end
