@@ -94,20 +94,19 @@ local function draw_audio_channel(channel_data, up)
   -- beyond the loop and therefore not active. For these inactive parts the line_x_cnt
   -- will be less than 1 or greater than AudioClip.WIDTH_PX.
   for line_x_cnt = 1-AudioClip.LEFT_PX, screen.WIDTH-AudioClip.LEFT_PX do
-    -- Determine begin and end time of what is to be drawn. Note: this can be beyond the 
-    -- limits of the active part of the loop.
+    -- Determine begin and end time of what is to be drawn for the x pixel value. 
+    -- Note: this can be beyond the limits of the active part of the loop.
     local ampl_line_end_time = AudioClip.loop_begin + line_x_cnt*duration_per_pixel
     local ampl_line_begin_time = ampl_line_end_time - duration_per_pixel
     
     -- Determine which samples should be included in the timeslot for the pixel.
     -- Note: these indixes can be before or after the active part of the voice 
     -- data, in which case there is no audio amplitude line to draw.
-    local sample_index_begin = math.floor(ampl_line_begin_time / channel_data.sec_per_sample) + 1
-    local sample_index_end = math.floor(ampl_line_end_time / channel_data.sec_per_sample)
-    
-    --FIXME should determine sample_index_begin and end by adding 0.01 and 0.5 and then see
-    -- if they are any different. If begin or end are different then output noticable 
-    -- error message.
+    -- Note: the 0.001 is added just incase time/secs_per_samp provides a value
+    -- just below an integer due to floating point math issues. But I checked and
+    -- was not able to find case where this actually made a difference.
+    local sample_index_begin = math.floor(0.001 + ampl_line_begin_time / channel_data.sec_per_sample) + 1
+    local sample_index_end = math.floor(0.001 + ampl_line_end_time / channel_data.sec_per_sample)
     
     -- If sample indexes are beyond the range of the data then cannot draw amplitude line
     if sample_index_end < 1 then
@@ -467,7 +466,7 @@ end
 
 --- Called when key2 is hit by user to exit the audio clip screen
 function AudioClip.exit()
-  log.debug("Exiting clip audio UI")
+  log.print("Exiting audio clip screen")
   
   -- Reset params for Audio Clip 
   AudioClip.reset()
@@ -497,8 +496,7 @@ end
 -- @tparam number loop_end Where in voice the loop ends. If nil then will use end of voice
 -- @tparam function final_loop_times_callback When audio clip is exited this callback is called to provide user adjust loop begin and end times
 function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begin, loop_end, final_loop_times_callback)
-  log.debug("In AudioClip.enable() and graph_y_pos="..tostring(graph_y_pos)..
-    " voice_duration="..tostring(voice_duration))
+  log.print("Entering audio clip screen and voice_duration="..tostring(voice_duration))
   
   -- Keep track of params
   AudioClip.is_enabled = true
