@@ -105,6 +105,10 @@ local function draw_audio_channel(channel_data, up)
     local sample_index_begin = math.floor(ampl_line_begin_time / channel_data.sec_per_sample) + 1
     local sample_index_end = math.floor(ampl_line_end_time / channel_data.sec_per_sample)
     
+    --FIXME should determine sample_index_begin and end by adding 0.01 and 0.5 and then see
+    -- if they are any different. If begin or end are different then output noticable 
+    -- error message.
+    
     -- If sample indexes are beyond the range of the data then cannot draw amplitude line
     if sample_index_end < 1 then
       goto continue
@@ -207,37 +211,51 @@ function AudioClip.draw_audio_graph()
     log.debug("d2.start="..d2.start.." d2.duration="..string.format("%.2f", d2.duration)..
       " #d2.samples="..#d2.samples.." d2.largest_sample="..string.format("%.2f", d2.largest_sample))
   end
-  
-  -- Since redrawing the whole audio screen the audio position marker will not have
-  -- have been drawn. It is instead drawn in new_audio_position_callback()
-  last_x_for_audio_position = nil
     
   -- Draw each channel, if have data for them
   if d1 ~= nil then draw_audio_channel(d1, true) end
   if d2 ~= nil then draw_audio_channel(d2, false) end
   
-  -- Display the duration at top of audio display, just below the custom display area
-  screen.move(screen.WIDTH/2, AudioClip.graph_y_pos + 6)
-  screen.level(8)
-  screen.font_face(1)
-  screen.font_size(8)
-  screen.aa(0)
-  screen.text_center(string.format("<- %.2fs ->", AudioClip.loop_end - AudioClip.loop_begin))
+  -- Initiate position polling if haven't done so yet. Reason need to do this after
+  -- have drawn all the data is because the position callback both draws the new
+  -- position using ADD mode and erases the old one using DIFFERENCE mode, so the
+  -- audio graphs need to be fully drawn first. And doing all the drawing takes
+  -- a while from when first enabled. Need to make sure position drawing is
+  -- done afterwards.
+  local voices_drawn = (d1 ~= nil and 1 or 0) + (d2 ~= nil and 1 or 0)
+  if voices_drawn == #AudioClip.softcut_voices then 
+    -- Initiate position polling now that all audio channels drawn
+    log.debug("Drew data for both voices so make sure audio position polling is running")
+    AudioClip.initiate_audio_position_polling()
+  end
   
-  -- Display loop begin time in lower left corner
-  screen.text_rotate(AudioClip.LEFT_PX-2, screen.HEIGHT, string.format("%.2fs", AudioClip.loop_begin), -90)
+  -- Display details of graph, but only once all voices have been drawn. This way only do it once.
+  if voices_drawn == #AudioClip.softcut_voices then
+    log.debug("============== Drew data for both voices so displaying all other details just once")
 
-  -- Display loop end time in lower right corner
-  screen.text_rotate(AudioClip.LEFT_PX + AudioClip.WIDTH_PX + 7, screen.HEIGHT, 
-    string.format("%.2fs", AudioClip.loop_end), -90)
+    -- Display the duration at top of audio display, just below the custom display area
+    screen.move(screen.WIDTH/2, AudioClip.graph_y_pos + 6)
+    screen.level(8)
+    screen.font_face(1)
+    screen.font_size(8)
+    screen.aa(0)
+    screen.text_center(string.format("<- %.2fs ->", AudioClip.loop_end - AudioClip.loop_begin))
+    
+    -- Display loop begin time in lower left corner
+    screen.text_rotate(AudioClip.LEFT_PX-2, screen.HEIGHT, string.format("%.2fs", AudioClip.loop_begin), -90)
   
-  -- Add help info to bottom
-  screen.move(screen.WIDTH/2, screen.HEIGHT-2)
-  screen.level(screen.levels.HELP)
-  screen.font_face(1)
-  screen.font_size(8)
-  screen.aa(0)
-  screen.text_center("Press Key2 to exit")
+    -- Display loop end time in lower right corner
+    screen.text_rotate(AudioClip.LEFT_PX + AudioClip.WIDTH_PX + 7, screen.HEIGHT, 
+      string.format("%.2fs", AudioClip.loop_end), -90)
+    
+    -- Add help info to bottom
+    screen.move(screen.WIDTH/2, screen.HEIGHT-2)
+    screen.level(screen.levels.HELP)
+    screen.font_face(1)
+    screen.font_size(8)
+    screen.aa(0)
+    screen.text_center("Press Key2 to exit")
+  end
 end
 
 
@@ -261,6 +279,9 @@ end
 
 -- Draws the entire position indicator line
 local function draw_position_indicator(x)
+  -- Not confident it is always okay to use fractional values for x, so round it to an integer
+  -- FIXME  x = math.floor(x + 0.5)
+  
   -- Setup for drawing
   screen.line_width(1)
   screen.aa(0)
@@ -284,27 +305,50 @@ end
 -- @tparam number voice which voice
 -- @tparam number position the current position in the voice, in seconds
 local function new_audio_position_callback(voice, position)
-  --log.print("New audio position. voice="..voice.." position="..position)
+  -- Apparently get at least one callback for each voice in softcut, even if only 
+  -- wanted to track single one. Therefore just return if voice is not the one
+  -- wanted callbacks for. This is important to make sure that the position
+  -- indicator is drawn properly.
+  if voice ~= AudioClip.softcut_voices[1] then
+    log.debug("new_audio_position_callback() called but for wrong voice, so ignoring")
+    return
+  end
+  
+  local pos = string.format("%.3f", position)
+  log.print("+++ New audio position callback. voice="..voice.." position="..pos) -- FIXME
+  
+  -- Determine new x pixel location for the position indicator
+  local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
+  local x = AudioClip.LEFT_PX+1 + (position - AudioClip.loop_begin)/duration_per_pixel
+  local x_pixel = math.floor(x + 0.5)
+
+  -- If at same pixel then don't need to do anything at all so just return
+  if x_pixel == last_x_for_audio_position then 
+    log.debug("FIXME *************** x_pixel == last_x_for_audio_position so not updating pos indicator")
+    return 
+  end
   
   -- Erase old indicator if it was drawn
   if last_x_for_audio_position ~= nil then
+      log.print("FIXME ------ last_x not nil so erasing old pos marker. last_x="..string.format("%.3f", last_x_for_audio_position))
     -- Use subtract mode so can just draw the position indicator again in order to erase it
     screen.blend_mode("difference")
 
     -- Draw the indicator at the old position in order to erase it
     draw_position_indicator(last_x_for_audio_position)
+  else
+    log.print("FIXME +++ last_x_for_audio_position is nil so NOT erasing old position marker")
   end
 
   -- Draw the position indicator at the new position
-  local duration_per_pixel = (AudioClip.loop_end - AudioClip.loop_begin) / AudioClip.WIDTH_PX
-  local x = AudioClip.LEFT_PX+1 + (position - AudioClip.loop_begin)/duration_per_pixel
   -- Use add mode so that can erase just by using subtract mode
   screen.blend_mode("add")
-  draw_position_indicator(x)
+  log.debug("FIXME ++++++ drawing the new position marker at x="..string.format("%.3f", x_pixel))
+  draw_position_indicator(x_pixel)
   
   -- Remember where drew the indicator so that it can be erased later
-  last_x_for_audio_position = x
-  
+  last_x_for_audio_position = x_pixel
+  log.debug("FIXME +++ set last_x_for_audio_position="..string.format("%.3f", last_x_for_audio_position))
   -- Actually make the changes visible
   screen.update()
 
@@ -354,12 +398,35 @@ local function buffer_content_processed_callback(ch, start, sec_per_sample, samp
 end
 
 
--- Converts the audio in Softcut buffer into data arrays that can be graphed. 
--- buffer_content_processed_callback() is called when the data has finished
--- being processed.
+-- For keeping track of whether currently polling position. Used to prevent trying to 
+-- start polling if already have done so.
+local currently_position_polling = false
+
+-- Initiates polling of the position within the audio loop so can draw
+-- it on audio graph. If already polling the position then this function
+-- won't actually do anything. Therefore can call it multiple times.
 -- @tparam number voice_duration length in seconds of the voice
+function AudioClip.initiate_audio_position_polling()
+  -- If already polling then done
+  if currently_position_polling then return end
+  currently_position_polling = true
+  
+  -- Configure so that new_audio_position_callback() is called every update_rate
+  -- seconds. This allows an indicator to be drawn that shows where in clip we are.
+  -- Only need to do this for one ofo the voices
+  softcut.phase_quant(AudioClip.softcut_voices[1], AudioClip.SHOW_POS_UPDATE_RATE)
+  softcut.event_phase(new_audio_position_callback)
+  log.debug("Starting polling for position. Will be calling new_audio_position_callback() for voice="..AudioClip.softcut_voices[1])
+  softcut.poll_start_phase()
+end
+
+
+-- Converts the audio in Softcut buffer into data arrays that can be graphed. 
+-- Only called once for the audio data. Don't need to call it every time encoder 
+-- changed. buffer_content_processed_callback() is called when the data has finished
+-- being processed. 
 function AudioClip.initiate_audio_data_processing(voice_duration)
-  log.debug("Processing audio data and voice_duration="..tostring(voice_duration))
+  log.debug("Initiating audio data processing. voice_duration="..tostring(voice_duration))
   
   -- register callbacks that handles the resampled audio data.
   -- And then initiate the resampling
@@ -369,13 +436,6 @@ function AudioClip.initiate_audio_data_processing(voice_duration)
     local max_samples = 200 * voice_duration -- 200 samples per second
     softcut.render_buffer(voice, start, voice_duration, max_samples)
   end
-  
-  -- Configure so that new_audio_position_callback() is called every update_rate
-  -- seconds. This allows an indicator to be drawn that shows where in clip we are.
-  -- Only need to do this for one ofo the voices
-  softcut.phase_quant(AudioClip.softcut_voices[1], AudioClip.SHOW_POS_UPDATE_RATE)
-  softcut.event_phase(new_audio_position_callback)
-  softcut.poll_start_phase()
 end
 
 
@@ -403,6 +463,7 @@ end
 function AudioClip.reset()
   -- Stop polling of audio phase since it takes resources
   softcut.poll_stop_phase()
+  currently_position_polling = false
   
   -- Don't need to worry about displaying audio position anymore
   last_x_for_audio_position = nil
@@ -464,12 +525,14 @@ function AudioClip.enable(voice1, voice2, voice_duration, graph_y_pos, loop_begi
   
   -- Loop the voices using proper begin and end times
   set_audio_loop_params()
-  
+    
   -- Get the raw data from softcut buffer
   AudioClip.initiate_audio_data_processing(voice_duration)
-    
+  
   -- Call redraw to display the special audio clip screen
-  redraw()
+  --FIXME redraw()
+  screen.clear()
+  screen.update()
 end
 
 
@@ -523,6 +586,11 @@ function AudioClip.enc(n, delta)
     
     set_audio_loop_params()
     
+    -- Clear last_x since about to redraw entire audio screen which means don't need 
+    -- to erase old position indicator
+    last_x_for_audio_position = nil
+    
+    -- Redraw whole aduio screen by calling the application's redraw()
     redraw()
   elseif n ==3 then
     -- encoder 3 turned so adjust loop end
@@ -538,6 +606,11 @@ function AudioClip.enc(n, delta)
 
     set_audio_loop_params()
   
+    -- Clear last_x since about to redraw entire audio screen which means don't need 
+    -- to erase old position indicator
+    last_x_for_audio_position = nil
+
+    -- Redraw whole aduio screen by calling the application's redraw()
     redraw()
   end
 end
