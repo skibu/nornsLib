@@ -3,7 +3,9 @@ Useful Lua libraries for Norns synth to make it easier to create scripts that ar
 
 See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
 
-# `json = require "nornsLib/jsonExt"`
+## JSON Extensions
+To use: `json = require "nornsLib/jsonExt"`
+
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
 ### json_str = json.encode(tbl, indent)
@@ -28,11 +30,17 @@ to a Lua table. This is done via a curl call. Allows compressed
 data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
-# `parameterExt = require "nornsLib/parameterExt"`
+## Parameters Extensions
+To use: `parameterExt = require "nornsLib/parameterExt"`
+
 The parameter extensions library does several things: 1) prevents overlap for option parameters;  2) makes navigation to parameter setting menu much simpler because user just has to press key1;  3) parameters (mEDIT) screen doesn't highlight separators since they cannot be modified, and better title; and 4) fixed params:bang(id) to optionally take a parameter id.
 
 ### Preventing overlap for parameter option
 This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
+
+An example is shown in the image below. The line that is highlighted, "Bush Warblers and Allies", normally wouldn't fit and would be drawn over the "Group:" label. But with the nornsLib parameter extension the font is reduced a small amount, and it fits quite well.
+
+<image src="images/long_param_name.png" width="400">
 
 ### Left align parameter values
 The default of having the parameter values being right justified makes them look quitei jumbly. But now they can be left aligned. One simply needs to call `set_left_align_parameter_values(true)` at initialization to do so.
@@ -64,7 +72,7 @@ end
 ```
 
 ### Improved look of Parameters menu screen
-Parameters (mEDIT) screen doesn't highlight separators since they cannot be modified. Improved the title
+Parameters (mEDIT) screen doesn't highlight separators since they cannot be modified. Improved the title of the screen as well.
 
 ### Fixed params:bang(id) to handle single parameter
 Turns out that in lua/core/clock.lua that params:bang("clock_tempo") is called to
@@ -74,7 +82,9 @@ bang function so that optionally only a single param can be banged. If id not sp
 then all all banged.
 
 
-# `psetExt = require "nornsLib/psetExt"` (presets screen)
+# Presets (PSET) Extensions
+To use: `psetExt = require "nornsLib/psetExt"` (presets screen)
+
 The original PSET (Presets) menu screen has a different UI than other situations.  The list of presets is simply not clear. And "pset" is a really confusing term since it stands for "preset", not "parameter set". Therefore with psetExt the presets are provided in a single line, as is done with other parameters. Also, switched from using upper case. 
 
 But a truly nice feature is that the parameters menu can be setup so that the user can jump directly from that screen to the preset page.
@@ -83,13 +93,16 @@ But a truly nice feature is that the parameters menu can be setup so that the us
 When setting up the script's parameters can use something like `params:set_action("pset", psetExt.jump_to_pset_screen )` to allow the user to jump directly to the preset screen, making navigation much more simple.
 
 
-# `require "nornsLib/textentryExt"`
+## Text Entry Extensions
+To use: `require "nornsLib/textentryExt"`
 
 The original text entry screen can be a bit cumbersome. By simply including the textentryExt library the UI of the text entry screen is replaced. The text entered is presented in a larger font to make it clear what is happening. And a "_" is added to the end to further clarify where characters are entered. 
 
 Additionaly, the list of characters was changed to present the SAVE option, and the backspace "<-" option clearly. Also, instead of presenting the characters in ascii order, which is not intended for a UI, first lower case characters, then upper case characters, then numbers, and then just a few symbols are provided. This seems to make it easier to find desired character. Also, one doesn't have to figure out how to switch focus from the characters line to the DEL / OK line at bottom of screen since those options are now available right in the character list.
 
-# `require "nornsLib/screenExt"`
+## Screen Extensions
+To use: `require "nornsLib/screenExt"`
+
 Originally included in the library a way to store and restore screen parameters. But it turns out this functionality is already provided via screen.save() and screen.restore(). These functions should simply be documented. 
 
 Also, the standard screen.text_extents() function has a notable flaw. It doesn't provide 
@@ -111,22 +124,23 @@ Screen.level() was modified to accept an floating point instead of just an integ
 * screen.level(value)
 
 In addition, screen.clear() is overriden to deal with a bug when writing an image buffer to the screen. In the 240424 there is a bug when writing an image buffer after other drawing events are queue up, like screen.clear(). The screen.display_image(), screen.display_image_region(), and screen.draw_to() calls are not queued and therefore can execute before the screen is fully drawn to, resulting in the image not be displayed correctly or even at all. This is being fixed in a future release of Norns, but if you are using these image functions then you will want to include this library since it is a good temporary fix for the problem. Once everyone is on new version of Norns code this can go away, but that might take a while. Using this code after Norns is fixed will still work. 
-* screen.display_image()
-* screen.display_image_region()
-* screen.draw_to()
+* `screen.display_image()`
+* `screen.display_image_region()`
+* `screen.draw_to()`
 
 And, overriding screen.draw_to() so that it can pass arguments to the function that is called.
 This makes drawing to images, controlled by args, possible. Definitely useful if one is working with image buffers.
-* function screen.draw_to(image, func, ...)
+* `function screen.draw_to(image, func, ...)`
 
 And lastly, addresses a very obscure problem with screen.blend_mode(index) where if used an index of 3-Multiply or later that was getting the wrong mode 
 because 3-Saturate was inadvertantly left out of the list in screen.lua . Therefore NornsLib screen extension fixes Screen.BLEND_MODES 
-* screen.blend_mode(index) - fixes Screen.BLEND_MODES
+* `screen.blend_mode(index) - fixes Screen.BLEND_MODES`
 
 Note: originally also provided a screen.free(image) for freeing image buffer. But this was removed because image buffers are automatically garbage collected when done with them. If one ever runs out of memory due to creating large number of images, should intersperse calls to collectGarbage() so that they are garbage collected in time.
 
 
-# `require "nornsLib/utilExt"`
+## Util Extensions
+To use: `require "nornsLib/utilExt"`
 
 ### util.get_table_size(tbl)
 Returns size of table. Intended to be used for arrays that are sparse, where 
@@ -174,7 +188,9 @@ like 'date' and also accessing APIs that can provide binary data, such as using
 curl to get an binary file.
 
 
-# `log = require "nornsLib/loggingExt"`
+## Logging Extension
+To use: `log = require "nornsLib/loggingExt"`
+
 For logging statements. Each statement is prepended with timestamp so can easily determine what is taking so long to process. They are also written to file at `dust/data/<app>/logfile.txt` .  Debug statements can be enabled or disabled, and contain useful debugging info such as function name, source code, and line number where called from. 
 
 ### log.print(obj)
@@ -200,7 +216,7 @@ If enabled via log.enable_debug(value), outputs the object using log.print(), pr
 # Using NornsLib in your script
 The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
 
-### fullNornsLibInclude.lua:
+### `fullNornsLibInclude.lua`:
 You can copy and paste the script below or do a `wget https://raw.githubusercontent.com/skibu/nornsLib/main/fullNornsLibInclude.lua`. And then just include this nornsLib script from your application script using something like `include "appLib/fullNornsLibInclude"`. And of course feel free to make needed changes to your copy of this file. For example, you might want to include just particular nornsLib extension files, e.g. `include "nornsLib/utilExt"` instead of all the extensions via `include "nornsLib/includeAllExt"`
 ```
 -- This file shows how nornsLib can be included. It is recommended that the 
