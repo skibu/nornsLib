@@ -3,32 +3,130 @@ Useful Lua libraries for Norns synth to make it easier to create scripts that ar
 
 See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
 
-## JSON Extensions
+## JSON Extension
 To use: `json = require "nornsLib/jsonExt"`
 
-Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
+Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. It is not a modification of an existing module, but a whole new module. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
-### json_str = json.encode(tbl, indent)
+#### `json_str = json.encode(tbl, indent)`
 Returns a table as a JSON string. Great way to see what is inside a complicated table. The indent parameter specifies how much each level should be indented, which makes for much more readable results. Default indent is 2 spaces. Use 0 if you want to minimize file size.
 
-### tbl = json.decode(json_str)
+#### `tbl = json.decode(json_str)`
 Converts a JSON string into a Lua table. 
 
-### json.print(tbl)
+#### `json.print(tbl)`
 A great replacement for `tab.pring()`. This function prints the table in JSON format, and can show all levels. Worth the price of admission!
 
-### json.write(tbl, filename)
+#### `json.write(tbl, filename)`
 Writes table object to a file in json format
 
-### tbl = json.read(filename)
+#### `tbl = json.read(filename)`
 Reads json file and converts the json into a table object and returns it. If the file
 doesn't exist then returns nil.
 
-### tbl = json.get(url, custom_headers)
+#### `tbl = json.get(url, custom_headers)`
 Does a json api call to the specified url and converts the JSON 
 to a Lua table. This is done via a curl call. Allows compressed
 data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
+
+
+## Audio Clip Extention
+To use: `audio_clip = require "nornsLib/audioClip"`
+
+Allows the user to visual an audio clip and adjust the begin and end times of the loop. Also shows a vertial line that indicates in real time the current position in the audio clip that is being played. It is not a modification of an existing module, but a whole new module.
+
+<img src="images/tufted_puffin_audio_clip.png" width="400">
+
+When on the Audio Clip screen the user can:
+* Encoder2 to adjust the begin time of the audio clip
+* Encoder3 to adjust the end time of the audio clip
+* Hold down Key3 if want to make fine adjustments when turning the encoders
+* Hit Key2 to exit the Audio Clipping Screen and return to the main screen
+* Hit Key1 to go to the Parameters Menu
+
+### Integrating it into code of your script
+
+Modify your redraw() function so that if audio clip screen enabled then
+draw out header for the screen and then call `audio_clip.draw_audio_graph()`, as follows:
+```
+function redraw()
+  -- If in clip audio mode then display custom audio clip screen
+  if audio_clip.enabled() then
+    screen.clear()
+  
+    -- Draw application specific custom part of the audio graph screen towards the top
+    screen.move(screen.WIDTH/2, 9)
+    screen.level(screen.levels.HIGHLIGHT)
+    screen.font_face(5)
+    screen.font_size(10)
+    screen.aa(0) -- Set to 1 if font size 12 or greater
+    screen.text_center("Your Header Info")
+  
+    -- Draw the actual audio graph, which will go below graph_y_pos
+    audio_clip.draw_audio_graph()
+
+    -- Done since just need to draw audio clip screen
+    return
+  end
+
+  -- Do whatever else you need to do here
+  ...
+end
+```
+
+Modify your key() function to handle when key2 or key3 hit as follows:
+```
+function key(n, down)
+  -- If in clip audio mode then use audio_clip.key() to handle key press
+  if audio_clip.enabled() then
+    if n ~= 1 then
+      audio_clip.key(n, down)
+      return
+    else
+      -- Key1 hit while audio clip screen is enabled. Need to turn off the audio 
+      -- clip display to stop the current position from being updated
+      audio_clip.reset()
+    end
+  end
+
+  -- Do whatever else you need to do here
+  ...
+end
+```
+
+Modify your enc() function to handle encoder2 and encoder3 turns as follows:
+```
+function enc(n, delta)
+  log.debug("Taweeet encoder changed n=" .. n .. " delta=" .. delta)
+  
+  -- Enable audio_clip mode if encoder 2 or 3 are turned, and currently not enabled
+  if n ~= 1 and not audio_clip.enabled() then
+    -- Switch to the audio clip screen. Use voices 1 & 2 from softcut
+    local duration = audio_clip.wav_file_duration(get_species_wav_filename())
+    local loop_begin = params:get("loop_begin_time")
+    local loop_end = params:get("loop_end_time")
+    -- NOTE: graph_y_pos should be set to leave space at top of screen for header. 12 px is good
+    audio_clip.enable(1, 2, duration, graph_y_pos, loop_begin, loop_end, loop_begin_end_times_callback)
+        
+    -- Redraw now so that the screen will be cleared and the header info will be drawn
+    redraw()
+    
+    -- Don't want the initial encoder turn to acctually change values
+    -- so simply return
+    return
+  end
+  
+  -- If in audio_clip mode then pass encoder update to it
+  if n ~= 1 and audio_clip.enabled() then
+    audio_clip.enc(n, delta)
+    return
+  end
+
+  -- Do whatever else you need to do here
+  ...
+end
+```
 
 ## Parameters Extensions
 To use: `parameterExt = require "nornsLib/parameterExt"`
@@ -82,7 +180,7 @@ bang function so that optionally only a single param can be banged. If id not sp
 then all all banged.
 
 
-# Presets (PSET) Extensions
+## Presets (PSET) Extensions
 To use: `psetExt = require "nornsLib/psetExt"` (presets screen)
 
 The original PSET (Presets) menu screen has a different UI than other situations.  The list of presets is simply not clear. And "pset" is a really confusing term since it stands for "preset", not "parameter set". Therefore with psetExt the presets are provided in a single line, as is done with other parameters. Also, switched from using upper case. 
@@ -132,11 +230,11 @@ And, overriding screen.draw_to() so that it can pass arguments to the function t
 This makes drawing to images, controlled by args, possible. Definitely useful if one is working with image buffers.
 * `function screen.draw_to(image, func, ...)`
 
-And lastly, addresses a very obscure problem with screen.blend_mode(index) where if used an index of 3-Multiply or later that was getting the wrong mode 
-because 3-Saturate was inadvertantly left out of the list in screen.lua . Therefore NornsLib screen extension fixes Screen.BLEND_MODES 
+And lastly, addresses a very obscure problem with `screen.blend_mode(index)` where if used an index of 3-Multiply or later that was getting the wrong mode 
+because `3-Saturate` was inadvertantly left out of the list in `screen.lua`. Therefore NornsLib screen extension fixes Screen.BLEND_MODES 
 * `screen.blend_mode(index) - fixes Screen.BLEND_MODES`
 
-Note: originally also provided a screen.free(image) for freeing image buffer. But this was removed because image buffers are automatically garbage collected when done with them. If one ever runs out of memory due to creating large number of images, should intersperse calls to collectGarbage() so that they are garbage collected in time.
+Note: originally also provided a `screen.free(image)` for freeing image buffer. But this was removed because image buffers are automatically garbage collected when done with them. If one ever runs out of memory due to creating large number of images, should intersperse calls to `collectGarbage()` so that they are garbage collected in time.
 
 
 ## Util Extensions
@@ -211,6 +309,9 @@ disable use log.enable_debug(false). This is like a condensed traceback.
 
 ### log.debug(obj)
 If enabled via log.enable_debug(value), outputs the object using log.print(), prefixed by "DEBUG: ", and with a second line that shows the context of function name, source code file name, and line number. Great for debugging!
+
+The following image show sample output for when debug logging is enabled. Note the useful information of the function name, source code, and line number provided on the second line of each debug log statement.
+![image](https://github.com/user-attachments/assets/b1aab395-69bc-4a06-ba3a-bb1cfb51b8c3)
 
 
 # Using NornsLib in your script
