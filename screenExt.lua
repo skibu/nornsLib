@@ -10,11 +10,13 @@ local nornsLib = require "nornsLib/nornsLib"
 -- Named levels for when drawing text
 screen.levels = {
   HIGHLIGHT = 15,
+  LIGHT = 15,
   UNHIGHLIGHT = 4,
   SELECTED_BUT_NOT_ENABLED = 6,
   LABEL = 9,
   HEADER = 4,
-  HELP = 2
+  HELP = 2,
+  DARK = 0
 }
 
 -- Useful constants
