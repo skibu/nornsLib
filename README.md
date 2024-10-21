@@ -3,26 +3,70 @@ Useful Lua libraries for Norns synth to make it easier to create scripts that ar
 
 See bottom of this doc on full [instructions](https://github.com/skibu/nornsLib/blob/main/README.md#using-nornslib-in-your-script) on how to include the library.
 
+---
+---
+
 ## JSON Extension
 To use: `json = require "nornsLib/jsonExt"`
 
 Ever gotten frustrated trying to understand what is in a table because `tab.print(tbl)` is just way too limited?? Ever want to read or write data in a human readable format so that you can actually understand the data? Well, the JSON extension can really help. It is not a modification of an existing module, but a whole new module. Not only does it enable easily converting from table objects to json and visa versa, but you can also print out a table in json format. Handles non-standard JSON values including Infinity, -Infinity, NaN, and null. Also handles function pointers well for encoding, though cannot handle them when decoding.
 
+---
+
 #### `json_str = json.encode(tbl, indent)`
 Returns a table as a JSON string. Great way to see what is inside a complicated table. The indent parameter specifies how much each level should be indented, which makes for much more readable results. Default indent is 2 spaces. Use 0 if you want to minimize file size.
+
+Example of creating a table tbl, converting to json string, and then printing it:
+```lua
+>> tbl = {this="that", sub_table={more="less"}}
+<ok>
+>> json_str = json.encode(tbl, 4)
+<ok>
+>> print("json_str: " .. json_str)
+json_str: {
+    "sub_table" : {
+        "more" : "less"
+    },
+    "this" : "that"
+}
+<ok>
+```
+---
 
 #### `tbl = json.decode(json_str)`
 Converts a JSON string into a Lua table. 
 
+---
+
 #### `json.print(tbl)`
-A great replacement for `tab.pring()`. This function prints the table in JSON format, and can show all levels. Worth the price of admission!
+A great replacement for `tab.print()`. This function prints the table in JSON format, and can show all levels. Worth the price of admission!
+
+Example:
+```lua
+>> tbl = {this="that", sub_table={more="less"}}
+<ok>
+>> json.print(tbl)
+{
+  "sub_table" : {
+    "more" : "less"
+  },
+  "this" : "that"
+}
+<ok>
+```
+
+---
 
 #### `json.write(tbl, filename)`
-Writes table object to a file in json format
+Writes table object to a file in json format.
+
+---
 
 #### `tbl = json.read(filename)`
 Reads json file and converts the json into a table object and returns it. If the file
 doesn't exist then returns nil.
+
+---
 
 #### `tbl = json.get(url, custom_headers)`
 Does a json api call to the specified url and converts the JSON 
@@ -30,6 +74,41 @@ to a Lua table. This is done via a curl call. Allows compressed
 data to be provided. You can optionally provide custom headers
 by passing in a table with key/value pairs, as in {["API-KEY"]="827382736"}
 
+Example:
+
+```
+>> tbl = json.get("httpbin.org/json")
+<ok>
+>> tab.print(tbl)   -- Show that data read in using single level tab.print()
+slideshow	table: 0x4783a8
+<ok>
+<ok>json.print(tbl) -- Show that all data read in using json.print()
+{
+  "slideshow" : {
+    "title" : "Sample Slide Show",
+    "slides" : [
+      {
+        "type" : "all",
+        "title" : "Wake up to WonderWidgets!"
+      },
+      {
+        "type" : "all",
+        "items" : [
+          "Why <em>WonderWidgets</em> are great",
+          "Who <em>buys</em> WonderWidgets"
+        ],
+        "title" : "Overview"
+      }
+    ],
+    "date" : "date of publication",
+    "author" : "Yours Truly"
+  }
+}
+<ok>
+```
+
+---
+---
 
 ## Audio Clip Extention
 To use: `audio_clip = require "nornsLib/audioClip"`
@@ -45,11 +124,13 @@ When on the Audio Clip screen the user can:
 * Hit Key2 to exit the Audio Clipping Screen and return to the main screen
 * Hit Key1 to go to the Parameters Menu
 
+---
+
 ### Integrating it into code of your script
 
 Modify your redraw() function so that if audio clip screen enabled then
 draw out header for the screen and then call `audio_clip.draw_audio_graph()`, as follows:
-```
+```lua
 function redraw()
   -- If in clip audio mode then display custom audio clip screen
   if audio_clip.enabled() then
@@ -76,7 +157,7 @@ end
 ```
 
 Modify your key() function to handle when key2 or key3 hit as follows:
-```
+```lua
 function key(n, down)
   -- If in clip audio mode then use audio_clip.key() to handle key press
   if audio_clip.enabled() then
@@ -96,7 +177,7 @@ end
 ```
 
 Modify your enc() function to handle encoder2 and encoder3 turns as follows:
-```
+```lua
 function enc(n, delta)
   log.debug("Taweeet encoder changed n=" .. n .. " delta=" .. delta)
   
@@ -128,10 +209,15 @@ function enc(n, delta)
 end
 ```
 
+---
+---
+
 ## Parameters Extensions
 To use: `parameterExt = require "nornsLib/parameterExt"`
 
 The parameter extensions library does several things: 1) prevents overlap for option parameters;  2) makes navigation to parameter setting menu much simpler because user just has to press key1;  3) parameters (mEDIT) screen doesn't highlight separators since they cannot be modified, and better title; and 4) fixed params:bang(id) to optionally take a parameter id.
+
+---
 
 ### Preventing overlap for parameter option
 This feature makes sure that option parameters don't overlap the label and the value, since that makes the text unreadable. To use this feature you only need to include the parameterExtensions library. Everything else is taken care of by changing some of the low-level code. If overlap for an option parameter is found, a narrower font will be used. And if there would still be overlap with the narrower font, then the right portion of the text will be trimmed off. If you happen to ever have overlapping text in a parameter option this provides a great and simple solution. 
@@ -140,10 +226,14 @@ An example is shown in the image below. The line that is highlighted, "Bush Warb
 
 <image src="images/long_param_name.png" width="400">
 
+---
+
 ### Left align parameter values
 The default of having the parameter values being right justified makes them look quitei jumbly. But now they can be left aligned. One simply needs to call `set_left_align_parameter_values(true)` at initialization to do so.
 
 Left alignment of parameter values works especially well if the right sides of the parameter labels are aligned. This can be done by padding the left of the parameter labels by spaces of various widths, until they align. Note: while a normal space char " " is 5 pixels wide, one can use a half space char "\u{2009}" of 3 pixels or and even skinnier hair space "\u{200A}" that is just a single pixel wide.
+
+---
 
 ### Easier navigation to the script's parameter page
 One of the great thing about a Norns is that the application scripts can have lots of parameters, allowing the user to finely control things. But the default method for getting to the parameters is quite clunky and dissuades users.
@@ -153,7 +243,7 @@ The current method is a rather magical sequence of a short key1 press to get to 
 This library makes it so that the user can simply hit key1, with a long or short press, and they will be brought automatically to the script's parameter page and the first parameter will already be selected. And to get back the script page the user can simply hit key1 again with a long or short press. No more wondering why can navigate the menus due to hitting key1 just a bit longer than 0.25 sec!
 
 To enable this functionality the script needs to add `parameterExt = require "nornsLib/parameterExt"` and call the library function `parameterExt.jump_to_edit_params_screen()` when the desired key sequence is hit. For example, for your script to have key1, long or short press, jump right to the parameters page one can do something like the following:
-```
+```lua
 parameterExt = require "nornsLib/parameterExt"
 
 function key(n, down)
@@ -169,8 +259,12 @@ function key(n, down)
 end
 ```
 
+---
+
 ### Improved look of Parameters menu screen
 Parameters (mEDIT) screen doesn't highlight separators since they cannot be modified. Improved the title of the screen as well.
+
+---
 
 ### Fixed params:bang(id) to handle single parameter
 Turns out that in lua/core/clock.lua that params:bang("clock_tempo") is called to
@@ -179,6 +273,8 @@ parameters, which is not desired in this situation. So this definition overrides
 bang function so that optionally only a single param can be banged. If id not specified 
 then all all banged.
 
+---
+---
 
 ## Presets (PSET) Extensions
 To use: `psetExt = require "nornsLib/psetExt"` (presets screen)
@@ -187,9 +283,13 @@ The original PSET (Presets) menu screen has a different UI than other situations
 
 But a truly nice feature is that the parameters menu can be setup so that the user can jump directly from that screen to the preset page.
 
+---
+
 ### `psetExt.jump_to_pset_screen()`
 When setting up the script's parameters can use something like `params:set_action("pset", psetExt.jump_to_pset_screen )` to allow the user to jump directly to the preset screen, making navigation much more simple.
 
+---
+---
 
 ## Text Entry Extensions
 To use: `require "nornsLib/textentryExt"`
@@ -197,6 +297,9 @@ To use: `require "nornsLib/textentryExt"`
 The original text entry screen can be a bit cumbersome. By simply including the textentryExt library the UI of the text entry screen is replaced. The text entered is presented in a larger font to make it clear what is happening. And a "_" is added to the end to further clarify where characters are entered. 
 
 Additionaly, the list of characters was changed to present the SAVE option, and the backspace "<-" option clearly. Also, instead of presenting the characters in ascii order, which is not intended for a UI, first lower case characters, then upper case characters, then numbers, and then just a few symbols are provided. This seems to make it easier to find desired character. Also, one doesn't have to figure out how to switch focus from the characters line to the DEL / OK line at bottom of screen since those options are now available right in the character list.
+
+---
+---
 
 ## Screen Extensions
 To use: `require "nornsLib/screenExt"`
@@ -236,9 +339,13 @@ because `3-Saturate` was inadvertantly left out of the list in `screen.lua`. The
 
 Note: originally also provided a `screen.free(image)` for freeing image buffer. But this was removed because image buffers are automatically garbage collected when done with them. If one ever runs out of memory due to creating large number of images, should intersperse calls to `collectGarbage()` so that they are garbage collected in time.
 
+---
+---
 
 ## Util Extensions
 To use: `require "nornsLib/utilExt"`
+
+---
 
 ### util.get_table_size(tbl)
 Returns size of table. Intended to be used for arrays that are sparse, where 
@@ -246,10 +353,14 @@ every index isn't defined. For such tables #tbl only returns number of elements
 until a nil is found, which of course won't return the true number of elements 
 if it is only sparsely populated.
 
+---
+
 ### util.sleep(seconds)
 Sleeps specified fraction number of seconds. Implemented by doing a system call.
 Note that this will lock out the UI for the specified amount of time, so should
 be used judiciously.
+
+---
 
 ### util.epochtime_str()
 Retuns epoch time string with with nanosecond precision, by doing a system 
@@ -258,25 +369,37 @@ to a number via tonumber() because would then loose resolution. And yes, it
 is doubtful that nono second resolution will be useful since doing a system
 call, which takes a while. Therefore util.time() will usually be sufficient.
 
+---
+
 ### util.get_filename(full_filename)
 For getting just the filename from full directory path. Returns what is after
 the last slash of the full filename. If full filename doesn't have any slashes
 then full_filename is returned.
 
+---
+
 ### util.get_dir(full_filename)
 For finding the directory of a file. Useful for creating file in a directory that
 doesn't already exist
+
+---
 
 ### util.make_dir_for_file(full_filename)
 If dir doesn't already exist, creates directory for a file that is about
 to be written. Different from `util.make_dir()` in that `util.make_dir_for_file()`
 can take in file name and determine the directory from it. 
 
+---
+
 ### encoded = util.urlencode(url)
 For encoding a url that has special characters.
 
+---
+
 ### util.urldecode(url)
 For decoding a url with special characters
+
+---
 
 ### util.execute_command(command)
 Like os.execute() but returns the result string from the command. And different
@@ -285,11 +408,15 @@ last character if a newline. This means it works well for both shell commands
 like 'date' and also accessing APIs that can provide binary data, such as using
 curl to get an binary file.
 
+---
+---
 
 ## Logging Extension
 To use: `log = require "nornsLib/loggingExt"`
 
 For logging statements. Each statement is prepended with timestamp so can easily determine what is taking so long to process. They are also written to file at `dust/data/<app>/logfile.txt` .  Debug statements can be enabled or disabled, and contain useful debugging info such as function name, source code, and line number where called from. 
+
+---
 
 ### log.print(obj)
 Like print(), but puts the epoch time in front. Really nice for understanding what
@@ -299,13 +426,19 @@ and 6 digits to the right. Showing more would just be kind of ugly. Nano seconds
 are just truncated instead of rounded because that level of precision is not
 actually useful for print statements.
 
+---
+
 ### log.error(obj)
 Uses log.print(), but preceeds the text with "ERROR: "
  
+---
+
 ### log.enable_debug(value) 
 This function needs to be called if want log.debug() functions to actually output
 info. To enable, call log.enable_debug(true) or simply log.enable_debug(). To
 disable use log.enable_debug(false). This is like a condensed traceback.
+
+---
 
 ### log.debug(obj)
 If enabled via log.enable_debug(value), outputs the object using log.print(), prefixed by "DEBUG: ", and with a second line that shows the context of function name, source code file name, and line number. Great for debugging!
@@ -313,13 +446,15 @@ If enabled via log.enable_debug(value), outputs the object using log.print(), pr
 The following image show sample output for when debug logging is enabled. Note the useful information of the function name, source code, and line number provided on the second line of each debug log statement.
 ![image](https://github.com/user-attachments/assets/b1aab395-69bc-4a06-ba3a-bb1cfb51b8c3)
 
+---
+---
 
 # Using NornsLib in your script
 The NornsLib library can easily be included in your script. Since nornsLib is a separate repo from your script you need to make sure that the nornsLib files are not just included, but that the whole library is cloned to the user's Norns device. To make this simple you can just copy and paste the following Lua file into your script repo. 
 
 ### `fullNornsLibInclude.lua`:
 You can copy and paste the script below or do a `wget https://raw.githubusercontent.com/skibu/nornsLib/main/fullNornsLibInclude.lua`. And then just include this nornsLib script from your application script using something like `include "appLib/fullNornsLibInclude"`. And of course feel free to make needed changes to your copy of this file. For example, you might want to include just particular nornsLib extension files, e.g. `include "nornsLib/utilExt"` instead of all the extensions via `include "nornsLib/includeAllExt"`
-```
+```lua
 -- This file shows how nornsLib can be included. It is recommended that the 
 -- application developer copy this file to their application, modify as needed,
 -- and then include it. 
